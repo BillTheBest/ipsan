@@ -11,5 +11,8 @@ configs = {
     },
     'database': {
         'name': 'ipsan.db'
+    },
+    'schedule': {
+        'interval': 5
     }
 }

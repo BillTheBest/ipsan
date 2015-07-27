@@ -18,19 +18,19 @@ class APIError(Exception):
         self.message = message
 
 
-def APIValueError(APIError):
+class APIValueError(APIError):
 
     def __init__(self,  field):
         super(APIValueError, self).__init__(100, 'Field %s invalid' % field)
 
 
-def APIAuthenticateError(APIError):
+class APIAuthenticateError(APIError):
 
     def __init__(self):
         super(APIAuthenticateError, self).__init__(101, 'Authenticate error')
 
 
-def APIResourceNotFoundError(APIError):
+class APIResourceNotFoundError(APIError):
 
     def __init__(self, resource):
         super(APIResourceNotFoundError, self).__init__(

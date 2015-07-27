@@ -11,12 +11,18 @@ from errors import APIError, APIValueError, APIAuthenticateError
 
 @get('/api/users')
 def api_users(request):
+    '''
+    List all users. Request url: [GET /api/users]
+    '''
     users = yield from User.findall(orderby='created_at desc')
     return dict(retcode=0, users=users)
 
 
 @get('/api/users/{id}')
 def api_get_user(*, id):
+    '''
+    Get user by id. Request url: [GET: /api/users/{id}]
+    '''
     user = yield from User.find(id)
     return dict(retcode=0, user=user)
 

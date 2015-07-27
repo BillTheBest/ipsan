@@ -1,8 +1,11 @@
 # -*-coding: utf-8 -*-
 
-
+import os
 import config_defaults
 
+cur_dir = os.path.dirname(os.path.abspath(__file__))
+grdisk_prog = os.path.join(cur_dir, "grdisk")
+grgrant_prog = os.path.join(cur_dir, "grgrant")
 
 class Dict(dict):
     '''

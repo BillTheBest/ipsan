@@ -74,6 +74,7 @@ def init(loop):
 
     add_routes(app, 'apiuser')
     add_routes(app, 'apiarray')
+    add_routes(app, 'apidisk')
     srv = yield from loop.create_server(app.make_handler(),
                                         configs.host.address,
                                         configs.host.port)
