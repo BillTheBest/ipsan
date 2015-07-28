@@ -50,14 +50,20 @@ class PV(Model):
 
 
 class VG(Model):
+    __table__ = 'vgs'
+
     id = StringField(primary_key=True)
     name = StringField()
     state = IntegerField()
+    size = IntegerField()
 
 
 class LVM(Model):
+    __table__ = 'lvms'
+
     id = StringField(primary_key=True)
     name = StringField()
     path = StringField()
     vg_name = StringField()
     state = IntegerField()
+    size = IntegerField()

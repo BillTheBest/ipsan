@@ -22,7 +22,7 @@ def disk_list():
             fields = line.split(' ')
             if len(fields) < 8:
                 return disks
-            if not fields[1].startswith('disk'):
+            if not fields[1].startswith('disk') and fields[0] != 62:
                 continue
             disk = Disk(id=fields[3], name=fields[2], slot=fields[0])
             disks.append(disk)

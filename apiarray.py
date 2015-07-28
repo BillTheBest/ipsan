@@ -194,8 +194,6 @@ def api_create_array(*, name, level, chunk, **kw):
             else:
                 spares.append(disk)
 
-        print(k, "=", v)
-
     if len(disks) == 0:
         return dict(retcode=403, message='no raid disk choosen')
 
@@ -229,13 +227,16 @@ def api_create_array(*, name, level, chunk, **kw):
 
 @post('/api/arrays/{id}/delete')
 def api_delete_array(*, id):
+    '''
+    Delete array. Request url:[POST /api/arrays/{id}/delete]
+    '''
     array = yield from Array.find(id)
     if array is None:
         raise APIResourceNotFoundError('array %s not found' % id)
     disks = yield from Disk.findall(where="array_id='%s'" % id)
     r = yield from _array_destroy(array, disks)
     if not r:
-        return dict(retcode=406, message='delete array %s failre' % id)
+        return dict(retcode=406, message='delete array %s failure' % id)
 
     yield from array.remove()
     for disk in disks:

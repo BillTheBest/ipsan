@@ -53,7 +53,8 @@ CREATE TABLE vgs
 (
 	id VARCHAR(50) PRIMARY KEY,
 	name VARCHAR(50) NOT NULL,
-	state INTEGER
+	state INTEGER,
+	size BIGINT
 );
 
 DROP TABLE IF EXISTS lvms;
@@ -63,7 +64,8 @@ CREATE TABLE lvms
 	name VARCHAR(50) NOT NULL,
 	path VARCHAR(50) NOT NULL,
 	vg_name VARCHAR(50) NOT NULL,
-	state INTEGER
+	state INTEGER,
+	size BIGINT
 );
 
 COMMIT;
