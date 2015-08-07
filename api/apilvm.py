@@ -19,7 +19,6 @@ _lvm_status = {
     'inactive': 2
 }
 
-
 _lvdisplay_prog = '/sbin/lvdisplay'
 _lvcreate_prog = '/sbin/lvcreate'
 _lvremove_prog = '/sbin/lvremove'
@@ -103,6 +102,9 @@ def _lvm_rename(path, newname):
 
 @get('/api/lvms')
 def api_lvms(request):
+    '''
+    Get all lvms. Request url:[GET /api/lvms]
+    '''
     lvms = yield from LVM.findall()
     if lvms is None:
         lvms = []

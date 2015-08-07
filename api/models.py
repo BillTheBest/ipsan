@@ -67,3 +67,25 @@ class LVM(Model):
     vg_name = StringField()
     state = IntegerField()
     size = IntegerField()
+
+
+class Target(Model):
+    __table__ = 'targets'
+
+    id = StringField(primary_key=True)
+    tid = IntegerField()
+    name = StringField()
+    iqn = StringField()
+    driver = StringField()
+    state = IntegerField()
+
+
+class LUN(Model):
+    __table__ = 'luns'
+
+    id = StringField(primary_key=True)
+    lid = IntegerField()
+    name = StringField()
+    type = StringField()
+    size = IntegerField()
+    tid = IntegerField()
