@@ -42,4 +42,7 @@ def show_underline(msg='', color=bcolors.OKGREEN):
 
 
 def format_input_text(text, style=bcolors.UNDERLINE):
-    return bcolors.UNDERLINE + text + bcolors.ENDC
+    return bcolors.OKBLUE + text + bcolors.ENDC
+
+def format_confim_text(text):
+    return bcolors.FAIL + text+'[y/n]? ' + bcolors.ENDC
