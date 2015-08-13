@@ -13,7 +13,7 @@ CREATE TABLE users
 );
 
 --add initial user
-INSERT INTO users(id, name, password, admin, created_at)VALUES("8b523253-d12b-4901-b3e8-c5bc7dff100d", "admin", "admin", 1, 1437453425);
+INSERT INTO users(id, name, password, admin, created_at)VALUES("9b2116db4162478f81f374a6797c3840", "admin", "admin", 1, 1437453425);
 
 DROP TABLE IF EXISTS arrays;
 CREATE TABLE arrays
@@ -71,7 +71,8 @@ CREATE TABLE lvms
 DROP TABLE IF EXISTS targets;
 CREATE TABLE targets
 (
-	id INTEGER PRIMARY KEY,
+	id VARCHAR(50) PRIMARY KEY,
+	tid INTEGER NOT NULL,
 	name VARCHAR(50) NOT NULL,
 	iqn VARCHAR(100) NOT NULL,
 	driver VARCHAR(50) NOT NULL,
@@ -81,10 +82,24 @@ CREATE TABLE targets
 DROP TABLE IF EXISTS luns;
 CREATE TABLE luns
 (
-	id INTEGER PRIMARY KEY,
+	id VARCHAR(50) PRIMARY KEY,
+	lid INTEGER NOT NULL,
 	name VARCHAR(50) NOT NULL,
 	type VARCHAR(50) NOT NULL,
 	size BIGINT,
-	tid INTEGER
-)
+	tid VARCHAR(50),
+	state INTEGER
+);
+
+DROP TABLE IF EXISTS events;
+CREATE TABLE events
+(
+	id VARCHAR(50) PRIMARY KEY,
+	level INTEGER NOT NULL,
+	category INTEGER NOT NULL,
+	type INTEGER,
+	action INTEGER,
+	message TEXT,
+	created_at INTEGER NOT NULL
+);
 COMMIT;
