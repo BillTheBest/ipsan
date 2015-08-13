@@ -97,7 +97,6 @@ class RequestHandler(object):
 
     def __call__(self, request):
         kw = None
-        print('-------------')
         if self._has_var_kw_arg or self._has_named_kw_arg or self._required_kw_args:
             if request.method == 'POST':
                 if not request.content_type:
@@ -115,7 +114,7 @@ class RequestHandler(object):
                     kw = dict(**params)
                 else:
                     return dict(retcode=errors.EHTTP_UNSUPPORT_CONTENT_TYPE,
-                                message='Unsupport content type %s' % ct)
+                                message='Unsupported content type %s' % ct)
 
             if request.method == 'GET':
                 qs = request.query_string

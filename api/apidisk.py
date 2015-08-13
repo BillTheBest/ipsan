@@ -35,5 +35,8 @@ def disk_list():
 
 @get('/api/disks')
 def api_disks():
+    '''
+    Get all disk. Request url [GET /api/disks]
+    '''
     disks = yield from disk_list()
     return dict(retcode=0, disks=disks)

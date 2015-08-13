@@ -12,6 +12,7 @@ def select(sql, args=(), size=None):
     with sqlite3.connect(configs.database.name) as conn:
         c = conn.cursor()
         try:
+            print(sql)
             c.execute(sql, args)
             if size:
                 r = c.fetchmany(size)
@@ -28,7 +29,6 @@ def execute(sql, args=()):
     with sqlite3.connect(configs.database.name) as conn:
         c = conn.cursor()
         try:
-            print(sql)
             c.execute(sql, args)
             return c.rowcount
         except Exception as e:
@@ -116,7 +116,7 @@ class ModelMetaclass(type):
             table_name, ','.join(fields), primary_key, ('?,'*(len(fields)+1))[0:-1])
         attrs['__delete__'] = 'delete from %s where %s=?' % (
             table_name, primary_key)
-
+        attrs['__truncate__'] = 'delete from %s' % table_name
         return type.__new__(cls, name, bases, attrs)
 
 
@@ -158,9 +158,7 @@ class Model(dict, metaclass=ModelMetaclass):
 
         orderby = kw.get('orderby', None)
         if orderby:
-            sql.append('order by')
-            sql.append(orderby)
-
+            sql.append('order by %s' % orderby)
 
         if args is None:
             args = []
@@ -202,8 +200,6 @@ class Model(dict, metaclass=ModelMetaclass):
     def save(self):
         args = list(map(self.getValueOrDefault, self.__fields__))
         args.append(self.getValueOrDefault(self.__primary_key__))
-        print(self.__insert__)
-        print(args)
         rows = yield from execute(self.__insert__, args)
         if rows != 1:
             logging.warning("failure to save data. affected:%s" % rows)
@@ -227,3 +223,9 @@ class Model(dict, metaclass=ModelMetaclass):
         if rows != 1:
             logging.warning('failure to delete.affected:%s' % rows)
         return rows
+
+
+    @classmethod
+    @asyncio.coroutine
+    def truncate(self):
+        yield from execute(self.__truncate__)

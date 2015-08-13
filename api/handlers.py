@@ -20,7 +20,7 @@ def cookie2user(cookie_str):
     try:
         L = cookie_str.split('-')
         user_id, expires, sha1 = L
-        user = User.find(user_id)
+        user = yield from  User.find(user_id)
         if user is None:
             return None
 

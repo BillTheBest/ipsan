@@ -117,6 +117,9 @@ def _vg_rename(name, newname):
 
 @get('/api/vgs')
 def api_vgs(request):
+    '''
+    Get all volume gorups. Request url [GET /api/vgs]
+    '''
     vgs = yield from VG.findall()
     if vgs is None:
         vgs = []
@@ -150,6 +153,21 @@ def api_vgs(request):
 
 @post('/api/vgs')
 def api_create_vg(*, name, **kw):
+    '''
+    Create volume group. Request url [POST /api/vgs]
+
+    Post data:
+
+        name: volume group name
+
+        pv0: physical volume 1. example: /dev/md0
+
+        pv1: physical volume 2. example: /dev/md1
+
+        pv2: physical volume 3. example: /dev/md2
+
+        ...
+    '''
     if not name or not name.strip():
         raise APIValueError('name')
     vg = yield from VG.findall(where="name='%s'" % name)
@@ -199,6 +217,15 @@ def api_delete_vg(*, id):
 
 @post('/api/vgs/{id}')
 def api_update_vg(id, request, *, name):
+    '''
+    Update volume group. Request url [POST /api/vgs/{id}]
+
+    Post data:
+
+        id: volume group id
+
+        name: volume group name
+    '''
     if not name or not name.strip():
         raise APIValueError('name:%s' % name)
     vg = yield from VG.find(id)

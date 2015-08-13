@@ -3,6 +3,7 @@
 
 import uuid
 import time
+import asyncio
 from orm import Model, StringField, IntegerField, TextField, BooleanField
 
 
@@ -74,8 +75,8 @@ class Target(Model):
 
     id = StringField(primary_key=True)
     tid = IntegerField()
-    name = StringField()
     iqn = StringField()
+    name = StringField()
     driver = StringField()
     state = IntegerField()
 
@@ -89,3 +90,44 @@ class LUN(Model):
     type = StringField()
     size = IntegerField()
     tid = IntegerField()
+    state = IntegerField()
+
+
+# define event action
+event_action_add = 1
+event_action_del = 2
+event_action_mod = 3
+event_action_view = 4
+event_action_login = 5
+event_action_logout = 6
+
+# define api event category
+event_api = 3
+event_api_user = 1
+event_api_target = 2
+event_api_array = 3
+event_api_lvm = 4
+event_api_vg = 5
+
+
+class Event(Model):
+    __table__ = 'events'
+
+    id = StringField(primary_key=True, default=uuid.uuid4().hex)
+    level = IntegerField()
+    category = IntegerField()
+    type = IntegerField()
+    action = IntegerField()
+    message = TextField()
+    created_at = IntegerField(default=int(time.time()))
+
+
+@asyncio.coroutine
+def log_event(level, type, action, message):
+    event = Event()
+    event.level = level
+    event.category = event_api
+    event.type = type
+    event.action = action
+    event.message = message
+    yield from event.save()

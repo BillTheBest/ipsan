@@ -10,7 +10,7 @@ import asyncio
 import errors
 from config import grgrant_prog
 from coroweb import get, post
-from models import Array, Disk
+from models import Array, Disk, log_event
 from errors import APIError, APIValueError, APIAuthenticateError, APIResourceNotFoundError
 
 _RE_RAID_DISK = re.compile(r'^([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([^/]+)([/a-zA-Z1-9]+)')
@@ -154,6 +154,9 @@ def _array_destroy(array, disks):
 
 @get('/api/arrays')
 def api_arrays(request):
+    '''
+    Get all arrays. Request url:[GET /api/arrays]
+    '''
     arrays = yield from Array.findall()
     if arrays is None:
         return dict(retcode=0, message='no arrays')
@@ -167,6 +170,9 @@ def api_arrays(request):
 
 @get('/api/arrays/{id}')
 def api_get_array(*, id):
+    '''
+    Get array by id. Request url[GET /api/arrays/{id}]
+    '''
     array = yield from Array.find(id)
     if array is None:
         raise APIResourceNotFoundError('array %s not found' % id)
@@ -177,6 +183,32 @@ def api_get_array(*, id):
 
 @post('/api/arrays')
 def api_create_array(*, name, level, chunk, **kw):
+    '''
+    Create array. Request url[POST /api/arrays]
+
+    Post data:
+        name: array name.
+
+        level: array level. support RAID0, RAID1, RAID5, RAID6, RAID10.
+
+        chunk: array chunk size. such as 64K,128K, 256K,512K. power of 2.
+
+        disk0: disk device name.
+
+        disk1: disk device name.
+
+        ...
+
+        diskN: disk devie name.
+
+        spare0: spare disk device name.
+
+        spare1: spare disk device name.
+
+        ...
+
+        spareN: spare disk device name.
+    '''
     array = yield from Array.findall(where="name='%s'" % name)
     if array:
         return dict(retcode=401, message='array %s already exists' % name)

@@ -1,47 +1,18 @@
+#!/usr/bin/env python
 # -*-coding: utf-8 -*-
 
 
 import colorinfo
 import os
-import re
+import time
 import subprocess
-import socket
+import threading
+import event
+from network import get_nic_interfaces, grgrant_prog, ifconfig, validate_ip, config_ip
+from upgrade import check_upgrade
 
-
-tools_dir = os.path.join(os.path.abspath(os.path.curdir), "tools")
-grgrant_prog = os.path.join(tools_dir, "grgrant")
 
 prompt = colorinfo.bcolors.OKBLUE + ">> " + colorinfo.bcolors.ENDC
-
-_re_nic_inter = re.compile(r'(^[a-zA-Z0-9]+)\s+Link encap')
-net_cfg_pos = '/etc/sysconfig/network'
-net_cfg_file_prefix = 'ifcfg-'
-net_cfg_items = '''
-STARTMODE=auto
-BOOTPROTO=static
-IPADDR=%s
-NETMASK=%s
-GATEWAY=%s
-'''
-
-
-def save_networkcfg(interface, address, mask, gateway):
-    net_cfg_file = net_cfg_file_prefix + interface
-    net_cfg_file = os.path.join(net_cfg_pos, net_cfg_file)
-    if os.path.exists(net_cfg_file):
-        s = open(net_cfg_file, 'r').read()
-        s = re.sub(r'(IPADDR=)([^\n]+)', r'\g<1>%s' % address, s)
-        if mask:
-            s = re.sub(r'(NETMASK=)([^\n]+)', r'\g<1>%s' % mask, s)
-        if gateway:
-            s = re.sub(r'(GATEWAY=)([^\n]+)', r'\g<1>%s' % gateway, s)
-        # backup origin configuration
-        if not os.path.exists(net_cfg_file+'.origin'):
-            os.rename(net_cfg_file, net_cfg_file+".orgin")
-        # save configuration
-        open(net_cfg_file, 'w').write(s)
-    else:
-        open(net_cfg_file, 'w').write(net_cfg_items % (address, mask, gateway))
 
 
 def help():
@@ -61,47 +32,12 @@ def confirm(prompt):
         return False
 
 
-def _ifconfig():
-    args = [grgrant_prog, "/sbin/ifconfig"]
-    try:
-        r = subprocess.check_output(args, universal_newlines=True)
-        return r
-    except subprocess.CalledProcessError as e:
-        colorinfo.show_info(e.message)
-
-
-def get_nic_interfaces():
-    interfaces = []
-    r = _ifconfig()
-    if r is None:
-        return interfaces
-
-    lines = r.split(os.linesep)
-
-    for line in lines:
-        r = _re_nic_inter.match(line)
-        if r:
-            if r.group(1) == 'lo':  # skip loopback address
-                continue
-            interfaces.append(r.group(1))
-
-    return interfaces
-
-
-def validate_ip(address):
-    try:
-        socket.inet_aton(address)
-        return address
-    except socket.error:
-        colorinfo.show_fail('Invalid ip address')
-
-
 def stat():
     pass
 
 
 def show_ip():
-    r = _ifconfig()
+    r = ifconfig()
     if r:
         colorinfo.show_info(r)
 
@@ -127,6 +63,7 @@ def ifcfg():
     r = input(colorinfo.format_input_text('%s IP ? ' % interfaces[n]))
     address = validate_ip(r)
     if address is None:
+        colorinfo.show_fail('Invalid ip')
         return
     r = input(colorinfo.format_input_text('%s Mask ? ' % interfaces[n]))
     if len(r) > 0:
@@ -152,19 +89,21 @@ def ifcfg():
     r = confirm('Save network configuration')
 
     if r:
-        save_networkcfg(interfaces[n], address, mask, gateway)
+        config_ip(interfaces[n], address, mask, gateway)
 
 
 def reboot():
     r = confirm('Confirm to reboot')
     if r:
-        subprocess.call(['/sbin/reboot'])
+        event.log_event(logging.INFO, event.event_os, 'reboot', event.event_os_reboot)
+        subprocess.call([grgrant_prog, '/sbin/reboot'])
 
 
 def poweroff():
     r = confirm('Confirm to poweroff')
     if r:
-        subprocess.call(['/sbin/poweroff'])
+        event.log_event(logging.INFO, event.event_os, 'poweroff', event.event_os_poweroff)
+        subprocess.call([grgrant_prog, '/sbin/poweroff'])
 
 
 def xterm():
@@ -191,7 +130,16 @@ def process_input(input):
         colorinfo.show_fail("Unrecognized command. Press 'h' to view help.")
 
 
-def main():
+def housekeeping():
+    while True:
+        check_upgrade()
+        time.sleep(1)
+
+
+def loop():
+    # start a thread to watch upgrade file
+    thread = threading.Thread(target=housekeeping)
+    thread.start()
     os.system('clear')  # clear screen
     colorinfo.show_info("Welcome to use ubique ipsan. Press 'h' to view help")
     while True:
@@ -205,6 +153,8 @@ def main():
             print()
             pass
 
+    thread.join()
+
 
 if __name__ == '__main__':
-    main()
+    loop()

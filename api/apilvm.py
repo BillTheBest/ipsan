@@ -141,6 +141,16 @@ def api_lvms(request):
 def api_lvm_create(*, name, vgname, size, unit):
     '''
     Create lvm. Request url:[POST /api/lvms]
+
+    Post data:
+
+        name: lvm name
+
+        vgname: volume group name. reference:/api/vgs
+
+        size: lvm size
+
+        unit: lvm size unit. [K, M, G, T, P]
     '''
     if not name or not name.strip():
         raise APIValueError('name')
@@ -189,6 +199,15 @@ def api_delete_lvm(*, id):
 
 @post('/api/lvms/{id}')
 def api_update_lvm(id, request, *, name):
+    '''
+    Update lvm. Request url [POST /api/lvms/{id}]
+
+    Post data:
+
+        id: lvm id
+
+        name: lvm name
+    '''
     if not name or not name.strip():
         raise APIValueError('name:%s' % name)
     lvm = yield from LVM.find(id)
