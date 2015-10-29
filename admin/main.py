@@ -6,10 +6,8 @@ import colorinfo
 import os
 import time
 import subprocess
-import threading
 import event
 from network import get_nic_interfaces, grgrant_prog, ifconfig, validate_ip, config_ip
-from upgrade import check_upgrade
 
 
 prompt = colorinfo.bcolors.OKBLUE + ">> " + colorinfo.bcolors.ENDC
@@ -95,14 +93,14 @@ def ifcfg():
 def reboot():
     r = confirm('Confirm to reboot')
     if r:
-        event.log_event(logging.INFO, event.event_os, 'reboot', event.event_os_reboot)
+        event.log_event(logging.INFO, event.event_os, event_os_reboot, 'Reboot')
         subprocess.call([grgrant_prog, '/sbin/reboot'])
 
 
 def poweroff():
     r = confirm('Confirm to poweroff')
     if r:
-        event.log_event(logging.INFO, event.event_os, 'poweroff', event.event_os_poweroff)
+        event.log_event(logging.INFO, event.event_os, event_os_poweroff, 'poweroff')
         subprocess.call([grgrant_prog, '/sbin/poweroff'])
 
 
@@ -130,16 +128,8 @@ def process_input(input):
         colorinfo.show_fail("Unrecognized command. Press 'h' to view help.")
 
 
-def housekeeping():
-    while True:
-        check_upgrade()
-        time.sleep(1)
-
-
 def loop():
     # start a thread to watch upgrade file
-    thread = threading.Thread(target=housekeeping)
-    thread.start()
     os.system('clear')  # clear screen
     colorinfo.show_info("Welcome to use ubique ipsan. Press 'h' to view help")
     while True:
@@ -152,8 +142,6 @@ def loop():
         except EOFError:
             print()
             pass
-
-    thread.join()
 
 
 if __name__ == '__main__':

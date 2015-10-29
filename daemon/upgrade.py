@@ -9,17 +9,16 @@ import logging
 import shutil
 import tempfile
 import subprocess
-from network import grgrant_prog
-from event import log_event, event_upgrade
+from common import log_event, event_upgrade, grgrant_prog, work_dir
+
+# uploads and upgrade dir
+uploads_dir = os.path.join(work_dir, 'uploads')
+update_dir = os.path.join(work_dir, 'update')
 
 
-upgrade_file_pattern = 'goldenrod-IPSAN*.tar.gz'
-uploads_dir = 'uploads'
-update_dir = 'update'
-ipsanapi = 'ipsanweb'
+upgrade_file_pattern = 'goldenrod.IPSAN*.tar.gz'
+ipsanapi = 'ipsanapi'
 _re_status = re.compile(r'^([^\s]+)\s+([^\s]+)\s+pid\s(\d{4,5})')
-
-logging.basicConfig(level=logging.INFO, filename='console.log')
 
 
 def has_upgrade_file():
@@ -74,42 +73,61 @@ def is_running(service):
         time.sleep(1)
         srv2, status2, pid2 = status_service(service)
         if srv2 != srv or status2 != 'RUNNING' or pid != pid2:
-            log_event(logging.ERROR, event_upgrad, 'upgrade failure:%s %s %s' % (srv2, name2, pid2))
+            log_event(logging.ERROR, event_upgrade, 0, 'upgrade failure:%s %s %s' % (srv2, name2, pid2))
             return False
     return True
 
 
 def exec_upgrade(file):
+    logging.info("Ready to upgrade: %s." % os.path.basename(file))
     upgrade_dir = tempfile.mkdtemp()
-    shutil.unpack_archive(file, upgrade_dir)
+    try:
+        shutil.unpack_archive(file, upgrade_dir)
+    except ValueError as e:
+        logging.exception(e)
+        os.remove(file)
+        return
+    except shutil.ReadError as e:
+        logging.exception(e)
+        os.remove(file)
+        return
+
     if not valid_upgrade(upgrade_dir):
+        logging.error("Valid upgrade file %s failure." % os.path.basename(file))
+        os.remove(file)
         return
 
     # stop ipsan web api
     r = stop_service(ipsanapi)
     if r != 0:
-        logging.error('stop ipsan error. %s' % r)
+        logging.error('Stop service %s error:%s.' % (ipsanapi, r))
         return
+
+    logging.info("Service %s stopped." % ipsanapi)
     # copy files
     upgrade_target = os.path.join(upgrade_dir, '*')
-    r = subprocess.call('cp -af %s .' % upgrade_target, shell=True)
+    r = subprocess.call('cp -af %s %s' % (upgrade_target, work_dir), shell=True)
     if r != 0:
+        logging.error("Copy %s to %s failure." % (upgrade_target, work_dir))
         return
+
     # start ipsan
     r = start_service(ipsanapi)
     if r != 0:
-        log_event(logging.ERROR, event_upgrade, '%s:start service %s failure' % (os.path.basename(file), ipsanapi))
         # TODO rollback
+        logging.error("Start Service %s failure." % ipsanapi)
         return
 
     # check upgrade success
     r = is_running(ipsanapi)
     if not r:
         # TODO rollback
+        logging.error("Service %s is not running." % ipsanapi)
         return
 
+    logging.info("Service %s started,Upgrade success." % ipsanapi)
     # upgrade success
-    log_event(logging.INFO, event_upgrade, '%s upgrade success' % os.path.basename(file))
+    log_event(logging.INFO, event_upgrade, 0, '%s upgrade success' % os.path.basename(file))
     shutil.rmtree(upgrade_dir)
     # save this version
     if os.path.exists(update_dir):
