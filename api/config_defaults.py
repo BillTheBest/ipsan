@@ -4,7 +4,7 @@
 configs = {
     'host': {
         'address': '0.0.0.0',
-        'port': 9000
+        'port': 8000
     },
     'session': {
         'secret': 'ipsan'
@@ -20,6 +20,7 @@ configs = {
         'version': '1.1',
         'SN': '21A91ADF4B9MZY3',
         'model': 'PN-231S81',
-        'vendor': 'ubique'
+        'vendor': 'ubique',
+        'panel': 3
     }
 }

@@ -3,12 +3,13 @@
 
 import os
 import re
+import json
 import logging
 import subprocess
 import asyncio
 from coroweb import get, post
 from config import grgrant_prog
-from models import VG
+from models import *
 from errors import APIError, APIValueError, APIAuthenticateError, APIResourceNotFoundError
 
 _vg_status = {
@@ -18,6 +19,8 @@ _vg_status = {
     "inactive": 3
 }
 
+_vgscan_prog = '/sbin/vgscan'
+_vgchange_prog = '/sbin/vgchange'
 _vgdisplay_prog = '/sbin/vgdisplay'
 _vgcreate_prog = '/sbin/vgcreate'
 _vgremove_prog = '/sbin/vgremove'
@@ -75,6 +78,8 @@ def _vg_parse_display(output):
 
 @asyncio.coroutine
 def _vg_display():
+    subprocess.call([grgrant_prog, _vgscan_prog]);
+    subprocess.call([grgrant_prog, _vgchange_prog, '-a', 'y']);
     try:
         output = subprocess.check_output([grgrant_prog, _vgdisplay_prog],
                                          universal_newlines = True)
@@ -119,6 +124,16 @@ def _vg_rename(name, newname):
 def api_vgs(request):
     '''
     Get all volume gorups. Request url [GET /api/vgs]
+
+    Response:
+
+        id: volume group guid
+
+        name: volume group name
+
+        state: volume group state. 0-unknow; 1-resizeable; 2-active; 3-inactive;
+
+        size: volume group size(KB)
     '''
     vgs = yield from VG.findall()
     if vgs is None:
@@ -152,7 +167,7 @@ def api_vgs(request):
 
 
 @post('/api/vgs')
-def api_create_vg(*, name, **kw):
+def api_create_vg(*, name, pv):
     '''
     Create volume group. Request url [POST /api/vgs]
 
@@ -160,43 +175,36 @@ def api_create_vg(*, name, **kw):
 
         name: volume group name
 
-        pv0: physical volume 1. example: /dev/md0
-
-        pv1: physical volume 2. example: /dev/md1
-
-        pv2: physical volume 3. example: /dev/md2
-
-        ...
+        pv: physical volume array in json format. example: [/dev/md0, /dev/md1...]
     '''
     if not name or not name.strip():
         raise APIValueError('name')
     vg = yield from VG.findall(where="name='%s'" % name)
     if vg:
-        return dict(retcode=501, message='vg %s already exists' % name)
+        return dict(retcode=501, message='Volume group %s already exists' % name)
 
-    pvs = []
-    for k, v in kw.items():
-        if k.startswith('pv'):
-            if os.path.exists(v):
-                pvs.append(v)
-            else:
-                return dict(retcode=502, message='Invalid pv %s' % v)
+    pvs_name = json.loads(pv)
+    for pv_name in pvs_name:
+            if not os.path.exists(pv_name):
+                return dict(retcode=502, message='Invalid pv %s' % pv_name)
 
-    if len(pvs) == 0:
-        return dict(retcode=503, message='no pv deivces')
+    if len(pvs_name) == 0:
+        return dict(retcode=503, message='No physical volume')
 
-    vgs = yield from _vg_create(name, pvs)
+    vgs = yield from _vg_create(name, pvs_name)
     if vgs is None or len(vgs) == 0:
-        return dict(retcode=504, message='create vg %s failure' % name)
+        return dict(retcode=504, message='Create volume group %s failure' % name)
 
     for vg in vgs:
         if vg.name != name:
             continue
         # save vg
         yield from vg.save()
+        yield from log_event(logging.INFO, event_vg, event_action_add,
+                         'Create volume group %s.' % (vg.name))
         return dict(retcode=0, vg=vg)
 
-    return dict(retcode=504, message='create vg %s failure' % name)
+    return dict(retcode=504, message='Create volume group %s failure' % name)
 
 
 @post('/api/vgs/{id}/delete')
@@ -208,10 +216,18 @@ def api_delete_vg(*, id):
     if not vg:
         raise APIResourceNotFoundError('vg %s' % id)
 
-    r = yield from _vg_delete(vg)
-    if r is None:
-        return dict(retcode=505, message='delete vg failure')
+    vgs_current = yield from _vg_display()
+    vg_id = None
+    for v in vgs_current:
+        if v.id == id:
+            r = yield from _vg_delete(vg)
+            if r is None:
+                return dict(retcode=505, message='delete vg failure')
+            break
+
     yield from vg.remove()
+    yield from log_event(logging.INFO, event_vg, event_action_del,
+                         'Delete volume group %s.' % (vg.name))
     return dict(retcode=0)
 
 
@@ -234,4 +250,6 @@ def api_update_vg(id, request, *, name):
     yield from _vg_rename(vg.name, name)
     vg.name = name
     yield from vg.update()
+    yield from log_event(logging.INFO, event_vg, event_action_mod,
+                         'Update volume group name to %s.' % (vg.name))
     return dict(retcode=0, vg=vg)

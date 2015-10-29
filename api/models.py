@@ -35,9 +35,11 @@ class Disk(Model):
 
     id = StringField(primary_key=True)
     name = StringField()
+    device = StringField()
     state = IntegerField()
     array_id = IntegerField()
     slot = IntegerField()
+    capacity = IntegerField()
 
 
 class PV(Model):
@@ -101,13 +103,23 @@ event_action_view = 4
 event_action_login = 5
 event_action_logout = 6
 
+event_action_reboot = 7
+event_action_poweroff = 8
+event_action_network = 9
+event_action_datetime = 10
+
+
 # define api event category
-event_api = 3
-event_api_user = 1
-event_api_target = 2
-event_api_array = 3
-event_api_lvm = 4
-event_api_vg = 5
+event_category = 1  # evnets from api
+
+
+event_os = 1
+event_upgrade = 2
+event_user = 3
+event_array = 4
+event_vg = 5
+event_lvm = 6
+event_target = 7
 
 
 class Event(Model):
@@ -125,9 +137,11 @@ class Event(Model):
 @asyncio.coroutine
 def log_event(level, type, action, message):
     event = Event()
+    event.id = uuid.uuid4().hex  # avoid repeat id
     event.level = level
-    event.category = event_api
+    event.category = event_category
     event.type = type
     event.action = action
     event.message = message
+    event.created_at = int(time.time())
     yield from event.save()

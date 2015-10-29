@@ -13,7 +13,7 @@ CREATE TABLE users
 );
 
 --add initial user
-INSERT INTO users(id, name, password, admin, created_at)VALUES("9b2116db4162478f81f374a6797c3840", "admin", "admin", 1, 1437453425);
+INSERT INTO users(id, name, password, admin, created_at)VALUES("9b2116db4162478f81f374a6797c3840", "admin", "d033e22ae348aeb5660fc2140aec35850c4da997", 1, 1437453425);
 
 DROP TABLE IF EXISTS arrays;
 CREATE TABLE arrays
@@ -32,7 +32,9 @@ DROP TABLE IF EXISTS disks;
 CREATE TABLE disks
 (
 	id VARCHAR(50) PRIMARY KEY,
+	device VARCHAR(50) NOT NULL,
 	name VARCHAR(50) NOT NULL,
+	capacity BIGINT NOT NULL,
 	state INTEGER,
 	array_id VARCHAR(50),
 	slot INTEGER

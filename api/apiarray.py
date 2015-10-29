@@ -3,6 +3,7 @@
 
 import os
 import re
+import json
 import uuid
 import logging
 import subprocess
@@ -10,7 +11,7 @@ import asyncio
 import errors
 from config import grgrant_prog
 from coroweb import get, post
-from models import Array, Disk, log_event
+from models import *
 from errors import APIError, APIValueError, APIAuthenticateError, APIResourceNotFoundError
 
 _RE_RAID_DISK = re.compile(r'^([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([0-9]+)\s+([^/]+)([/a-zA-Z1-9]+)')
@@ -55,6 +56,9 @@ def _array_parse_output(output):
                 r = _RE_RAID_SIZE.match(v)
                 if r:
                     array.capacity = int(r.group(0))
+            elif k.startswith('Chunk Size'):
+                if v.endswith('K'):
+                    array.chunk_size = int(v[:-1])
             else:
                 pass
         elif line.startswith('UUID'):
@@ -65,8 +69,18 @@ def _array_parse_output(output):
             if not r:
                 continue
             disk = dict()
-            disk['name'] = r.group(6).strip()
+
             disk['state'] = r.group(5).strip()
+            disk['device'] = r.group(6).strip()
+            # handle disk removed. (device will not shown)
+            if not disk['device'].startswith('/'):
+                disk['state'] += disk['device']
+                disk['device'] = ""
+
+            d = yield from Disk.findall(where="device='%s'" % disk['device'])
+            if len(d) > 0:
+                disk['name'] = d[0].name
+                disk['capacity'] = d[0].capacity
             array.disks.append(disk)
 
     return array
@@ -77,8 +91,8 @@ def _make_next_array_device():
     for i in range(128):
         devname = '/dev/md%s' % i
         if not os.path.exists(devname):
-            arrays = Array.findall(where="device='%s'" % devname)
-            if arrays is None:
+            arrays = yield from Array.findall(where="device='%s'" % devname)
+            if arrays is None or len(arrays) == 0:
                 return devname
 
 
@@ -91,12 +105,12 @@ def _array_create(level, disks, chunk=512, spares=None):
         return None
     args.append(device)
     args.append('-l')
-    args.append(level)
+    args.append(str(level))
     args.append('-n')
-    args.append(len(disks))
+    args.append(str(len(disks)))
     if spares and len(spares) > 0:
         args.append('-x')
-        args.append(len(spares))
+        args.append(str(len(spares)))
 
     args.extend(disks)
     args.append('--run') # ingore confirm
@@ -124,7 +138,18 @@ def _array_detail(array):
     if output:
         array_copy = yield from _array_parse_output(output)
         array_copy.name = array.name
+        array_copy.device = array.device
+        array_copy.created_at = array.created_at
         array = array_copy
+    else:
+        array.state = "Missing"
+        array.raid_devices = 0
+        array.active_devices = 0
+        array.total_devices = 0
+        array.working_devices = 0
+        array.failed_devices = 0
+        array.spare_devices = 0
+        array.disks = []
 
     return array
 
@@ -156,6 +181,22 @@ def _array_destroy(array, disks):
 def api_arrays(request):
     '''
     Get all arrays. Request url:[GET /api/arrays]
+
+    Response:
+
+        state: 0-unknow;
+
+        device: array device name
+
+        name: array name
+
+        level: array level
+
+        chunk_size: array chunk size(KB)
+
+        capacity: array capacity(KB)
+
+        created_at: array created time(seconds)
     '''
     arrays = yield from Array.findall()
     if arrays is None:
@@ -182,7 +223,7 @@ def api_get_array(*, id):
 
 
 @post('/api/arrays')
-def api_create_array(*, name, level, chunk, **kw):
+def api_create_array(*, name, level, chunk, disk, spare):
     '''
     Create array. Request url[POST /api/arrays]
 
@@ -193,41 +234,35 @@ def api_create_array(*, name, level, chunk, **kw):
 
         chunk: array chunk size. such as 64K,128K, 256K,512K. power of 2.
 
-        disk0: disk device name.
+        disks: disk device array in json format. such as [/dev/sdb, /dev/sdc, /dev/sdd...]
 
-        disk1: disk device name.
-
-        ...
-
-        diskN: disk devie name.
-
-        spare0: spare disk device name.
-
-        spare1: spare disk device name.
-
-        ...
-
-        spareN: spare disk device name.
+        spares: spare disk device array in json format.
     '''
     array = yield from Array.findall(where="name='%s'" % name)
     if array:
-        return dict(retcode=401, message='array %s already exists' % name)
+        return dict(retcode=401, message='Array %s already exists' % name)
+
+    data_devname= json.loads(disk)
+    spare_devname = json.loads(spare)
 
     disks = []
     spares = []
-    for k, v in kw.items():
-        if k.startswith('disk') or k.startswith('spare'):
-            # check disk is valid
-            disk = yield from Disk.findall(where="name='%s'" % v)
-            if len(disk) == 0:
-                raise APIResourceNotFoundError('%s' % v)
-            if k.startswith('disk'):
-                disks.append(disk)
-            else:
-                spares.append(disk)
+
+    # valid disk
+    for dev in data_devname:
+        r = yield from Disk.findall(where="device='%s'" % dev)
+        if len(r) == 0:
+            raise APIResourceNotFoundError('%s' % dev)
+        disks.append(r[0])
+
+    for dev in spares:
+        r = yield from Disk.findall(where="device='%s'" % dev)
+        if len(r) == 0:
+            raise APIResourceNotFoundError('%s' % dev)
+        spares.append(r[0])
 
     if len(disks) == 0:
-        return dict(retcode=403, message='no raid disk choosen')
+        return dict(retcode=403, message='No available data disk')
 
     if not level.isnumeric():
         raise APIValueError('level')
@@ -239,21 +274,22 @@ def api_create_array(*, name, level, chunk, **kw):
         return dict(retcode=404, message='Raid %s need at least %s didks' %
                     (level, at_least_disk[level]))
 
-    disk_devices = [disk.name for disk in disks]
-    spare_deivces = [spare.name for spare in spares]
-    array_device = yield from _array_create(level, disk_devices, chunk, spare_devices)
+    array_device = yield from _array_create(level, data_devname, chunk, spare_devname)
 
     if array_device is None:
-        return dict(retcode=405, message='create array failure')
+        return dict(retcode=405, message='Create array failure.No available device')
 
-    array = Array(name=name, device=array_device, level=level, chunk=chunk)
-    yield from array.save()
+    array = Array(name=name, device=array_device, level=level, chunk_size=chunk, created_at=int(time.time()))
     array = yield from _array_detail(array)
+    yield from array.save()
+
     # update array id of each array disk
     for disk in  disks:
         disk.array_id = array.id
         yield from disk.update()
 
+    yield from log_event(logging.INFO, event_array, event_action_add,
+                         'Create array %s.level:%s,data disk:%s,spare:%s' % (name, level, ','.join(data_devname), ','.join(spare_devname)))
     return dict(retcode=0, array=array)
 
 
@@ -264,7 +300,7 @@ def api_delete_array(*, id):
     '''
     array = yield from Array.find(id)
     if array is None:
-        raise APIResourceNotFoundError('array %s not found' % id)
+        raise APIResourceNotFoundError('array %s' % id)
     disks = yield from Disk.findall(where="array_id='%s'" % id)
     r = yield from _array_destroy(array, disks)
     if not r:
@@ -276,4 +312,6 @@ def api_delete_array(*, id):
         disk.state = 0
         yield from disk.update()
 
+    yield from log_event(logging.INFO, event_array, event_action_del,
+                         "Delete array %s" % array.name)
     return dict(retcode=0)

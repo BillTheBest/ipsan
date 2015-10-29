@@ -9,7 +9,7 @@ import subprocess
 from apivg import _vg_display, _size_to_kb
 from coroweb import get, post
 from config import grgrant_prog
-from models import LVM
+from models import *
 from errors import APIError, APIValueError, APIAuthenticateError, APIResourceNotFoundError
 
 
@@ -19,6 +19,7 @@ _lvm_status = {
     'inactive': 2
 }
 
+_lvscan_prog = '/sbin/lvscan'
 _lvdisplay_prog = '/sbin/lvdisplay'
 _lvcreate_prog = '/sbin/lvcreate'
 _lvremove_prog = '/sbin/lvremove'
@@ -70,6 +71,7 @@ def _lvm_parse_display(output):
 
 @asyncio.coroutine
 def _lvm_display():
+    subprocess.call([grgrant_prog, _lvscan_prog])
     args = [grgrant_prog, _lvdisplay_prog]
     output = subprocess.check_output(args, universal_newlines=True)
     return (yield from _lvm_parse_display(output))
@@ -104,6 +106,20 @@ def _lvm_rename(path, newname):
 def api_lvms(request):
     '''
     Get all lvms. Request url:[GET /api/lvms]
+
+    Response:
+
+        state: 0-unknow; 1-avaailable; 2-inactive;
+
+        path: lvm path. like /dev/vg0/lv0
+
+        size: lvm size(KB)
+
+        vg_name: volume group name
+
+        id: lvm guid
+
+        name: lvm name
     '''
     lvms = yield from LVM.findall()
     if lvms is None:
@@ -138,7 +154,7 @@ def api_lvms(request):
 
 
 @post('/api/lvms')
-def api_lvm_create(*, name, vgname, size, unit):
+def api_lvm_create(*, name, vgname, size):
     '''
     Create lvm. Request url:[POST /api/lvms]
 
@@ -148,26 +164,22 @@ def api_lvm_create(*, name, vgname, size, unit):
 
         vgname: volume group name. reference:/api/vgs
 
-        size: lvm size
-
-        unit: lvm size unit. [K, M, G, T, P]
+        size: lvm size ends with unit, lvm size unit. [K, M, G, T, P]. example: 3.5T
     '''
     if not name or not name.strip():
         raise APIValueError('name')
-    if not size.isnumeric():
+    if not size or not size.strip():
         raise APIValueError('size')
-    if unit.upper() not in ['K','M','G','T','P']:
-        raise APIValueError('unit value should be [K,M,G,T,P]')
+    if not size[-1] in ['K','M','G','T','P']:
+        raise APIValueError('size unit value should be [K,M,G,T,P]')
 
     # validate vg
     vgs = yield from _vg_display()
     vgs_name = [vg.name for vg in vgs]
     if vgname not in vgs_name:
-        raise APIResourceNotFoundError("vg '%s' not found" % vgname)
+        raise APIResourceNotFoundError("volumne group '%s' not found" % vgname)
 
-    lvm_size_str = '%s%s' % (size, unit)
-    print(name, vgname, lvm_size_str)
-    lvms = yield from _lvm_create(name, vgname, lvm_size_str)
+    lvms = yield from _lvm_create(name, vgname, size)
 
     if lvms is None or len(lvms) == 0:
         return dict(retcode=604, message='create lvm failure')
@@ -177,6 +189,8 @@ def api_lvm_create(*, name, vgname, size, unit):
             continue
         # save lvm
         yield from lvm.save()
+        yield from log_event(logging.INFO, event_lvm, event_action_add,
+                             'Create LVM %s, size:%s.' % (lvm.name, size))
         return dict(retcode=0, lvm=lvm)
     return dict(retcode=604, message='create lvm failure')
 
@@ -190,10 +204,15 @@ def api_delete_lvm(*, id):
     if not lvm:
         raise APIResourceNotFoundError('lvm %s' % id)
 
-    r = yield from _lvm_delete(lvm)
-    if r is None:
-        return dict(retcode=605, message='delete lvm failure')
+    lvms = _lvm_display()
+    for l in lvms:
+        if l.id == id:
+            r = yield from _lvm_delete(lvm)
+            if r is None:
+                return dict(retcode=605, message='delete lvm failure')
     yield from lvm.remove()
+    yield from log_event(logging.INFO, event_lvm, event_action_del,
+                         'Delete LVM %s.' % (lvm.name))
     return dict(retcode=0)
 
 
@@ -216,4 +235,6 @@ def api_update_lvm(id, request, *, name):
     yield from _lvm_rename(lvm.path, name)
     lvm.name = name
     yield from lvm.update()
+    yield from log_event(logging.INFO, event_lvm, event_action_mod,
+                         'Update LVM name to %s.' % (lvm.name))
     return dict(retcode=0, lvm=lvm)

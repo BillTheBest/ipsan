@@ -3,10 +3,9 @@
 import os
 import config_defaults
 
-
-tools_dir = os.path.join(os.path.abspath(os.path.curdir), "tools")
-grdisk_prog = os.path.join(tools_dir, "grdisk")
-grgrant_prog = os.path.join(tools_dir, "grgrant")
+# tools_dir = os.path.join(os.path.abspath(os.path.curdir), "tools")
+grdisk_prog = os.path.join(os.path.curdir, "grdisk")
+grgrant_prog = os.path.join(os.path.curdir, "grgrant")
 
 class Dict(dict):
     '''

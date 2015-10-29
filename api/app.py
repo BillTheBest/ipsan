@@ -14,7 +14,7 @@ from orm import select, execute
 from errors import APIAuthenticateError
 
 
-logging.basicConfig(level=logging.INFO)
+
 
 @asyncio.coroutine
 def logger_factory(app, handler):
@@ -48,7 +48,6 @@ def auth_factory(app, handler):
 def response_factory(app, handler):
     @asyncio.coroutine
     def response(request):
-        logging.info('Response handler...')
         r = (yield from handler(request))
 
         if isinstance(r, web.StreamResponse):
@@ -60,13 +59,19 @@ def response_factory(app, handler):
         if isinstance(r, str):
             resp = web.Response(body=r.encode('utf-8'))
             resp.content_type = 'text/html;charset=utf-8'
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Access-Control-Allow-Credentials'] = 'true'
             return resp
         if isinstance(r, dict):
             resp = web.Response(body=json.dumps(r).encode('utf-8'))
             resp.content_type = 'application/json;charset=utf-8'
+            resp.headers['Access-Control-Allow-Origin'] = '*'
+            resp.headers['Access-Control-Allow-Credentials'] = 'true'
             return resp
         resp = web.Response(body=str(r).encode('utf-8'))
         resp.content_type = 'text/plain;charset=utf-8'
+        resp.headers['Access-Control-Allow-Origin'] = '*'
+        resp.headers['Access-Control-Allow-Credentials'] = 'true'
         return resp
 
     return response
@@ -90,8 +95,17 @@ def init(loop):
                                         configs.host.address,
                                         configs.host.port)
 
-    logging.info('server start at port %s' % configs.host.port)
+    logging.info('Server start at port %s' % configs.host.port)
     return srv
+
+# cretea log directory if not exist
+log_dir = "log"
+if not os.path.exists(log_dir):
+    os.mkdir(log_dir)
+
+logging.basicConfig(level=logging.INFO,
+                    filename=os.path.join(log_dir, "ipsanapi.log"),
+                    format='%(asctime)s %(levelname)s:%(message)s')
 
 loop = asyncio.get_event_loop()
 loop.run_until_complete(init(loop))

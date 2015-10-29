@@ -12,8 +12,10 @@ def select(sql, args=(), size=None):
     with sqlite3.connect(configs.database.name) as conn:
         c = conn.cursor()
         try:
-            print(sql)
-            c.execute(sql, args)
+            if args:
+                c.execute(sql, args)
+            else:
+                c.execute(sql)
             if size:
                 r = c.fetchmany(size)
             else:
@@ -152,6 +154,10 @@ class Model(dict, metaclass=ModelMetaclass):
     @asyncio.coroutine
     def findall(cls, where=None, args=None, **kw):
         sql = [cls.__select__]
+
+        if args is None:
+            args = []
+
         if where:
             sql.append('where')
             sql.append(where)
@@ -160,8 +166,17 @@ class Model(dict, metaclass=ModelMetaclass):
         if orderby:
             sql.append('order by %s' % orderby)
 
-        if args is None:
-            args = []
+        limit = kw.get('limit', None)
+        if limit:
+            sql.append('limit')
+            if isinstance(limit, int):
+                sql.append('?')
+                args.append(limit)
+            elif isinstance(limit, tuple) and len(limit) == 2:
+                sql.append('?, ?')
+                args.extend(limit)
+            else:
+                raise ValueError('Invalid limit value: %s' % str(limit))
 
         rs = yield from select(' '.join(sql), args)
         if rs is None:
@@ -179,6 +194,19 @@ class Model(dict, metaclass=ModelMetaclass):
 
     @classmethod
     @asyncio.coroutine
+    def findNumber(cls, selectField, where=None, args=None):
+        sql = ['select %s from %s' % (selectField, cls.__table__)]
+        if where:
+            sql.append('where')
+            sql.append(where)
+        rs = yield from select(' '.join(sql), args, 1)
+        if not rs or len(rs) == 0:
+            return None
+        return rs[0][0]
+
+
+    @classmethod
+    @asyncio.coroutine
     def find(cls, pk):
         '''
         find by primary key
@@ -186,7 +214,7 @@ class Model(dict, metaclass=ModelMetaclass):
         sql = [cls.__select__]
         sql.append("where %s='%s'" % (cls.__primary_key__, pk))
         rs = yield from select(' '.join(sql))
-        if len(rs) == 0:
+        if rs is None or len(rs) == 0:
             return None
         d = dict()
         r = rs[0]

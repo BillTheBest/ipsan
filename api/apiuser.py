@@ -6,10 +6,11 @@ import logging
 import json
 import asyncio
 import errors
+import hashlib
 from handlers import user2cookie, COOKIE_NAME
 from coroweb import get, post
 from models import *
-from errors import APIError, APIValueError, APIAuthenticateError
+from errors import APIError, APIValueError, APIResourceNotFoundError
 from aiohttp import web
 
 
@@ -67,35 +68,43 @@ def api_login(*, user, password):
     '''
     users = yield from User.findall(where="name='%s'" % user)
     if not users or len(users) == 0:
-        return dict(retcode=0, message='user %s not eixsts' % user)
+        return dict(retcode=101, message='user %s not eixsts' % user)
 
     user = users[0]
-    if user.password != password:
-        return dict(retcode=0, message='incorrect password')
+    if user.password != hashlib.sha1(password.encode('utf-8')).hexdigest():
+        return dict(retcode=102, message='incorrect password')
     # set cookie
     r = web.Response()
     r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
     r.content_type = 'application/json;charset=utf8'
+    r.headers['Access-Control-Allow-Origin'] = '*'
+    r.headers['Access-Control-Allow-Credentials'] = 'true'
     d = dict(retcode=0, user=user)
     r.body = json.dumps(d, ensure_ascii=True).encode('utf-8')
-    yield from log_event(logging.INFO, event_api_user, event_action_login,
-                         'user %s login' % user.name)
+    yield from log_event(logging.INFO, event_user, event_action_login,
+                         'User %s login' % user.name)
     return r
 
 
 @post('/api/logout')
-def api_logout():
+def api_logout(*, user):
     '''
     Do logout. Request url: [POST /api/logout']
+
+    Post data:
+
+        user: user name
     '''
     # set cookie
     r = web.Response()
     r.set_cookie(COOKIE_NAME, "deleted", httponly=True)
     r.content_type = 'application/json;charset=utf8'
+    r.headers['Access-Control-Allow-Origin'] = '*'
+    r.headers['Access-Control-Allow-Credentials'] = 'true'
     d = dict(retcode=0)
     r.body = json.dumps(d, ensure_ascii=True).encode('utf-8')
-    yield from log_event(logging.INFO, event_api_user, event_action_login,
-                         'user %s logout' % user.name)
+    yield from log_event(logging.INFO, event_user, event_action_logout,
+                         'User %s logout' % user)
     return r
 
 
@@ -133,14 +142,16 @@ def api_ceate_user(*, name, password):
     if not password or not password.strip():
         raise APIValueError('password')
 
+    name = name.strip()
+    password = hashlib.sha1(password.strip().encode('utf-8')).hexdigest()
     users = yield from User.findall(where="name='%s'" % name)
     if len(users) > 0:
         raise APIError(errors.EUSER_ALREADY_EXISTS, 'User %s already exist' % name)
 
     user = User(name=name, password=password)
     yield from user.save()
-    yield from log_event(logging.INFO, event_api_user, event_action_add,
-                         'add user %s' % name)
+    yield from log_event(logging.INFO, event_user, event_action_add,
+                         'Add user %s' % name)
     return dict(retcode=0, user=user)
 
 
@@ -151,11 +162,14 @@ def api_delete_user(*, id):
     '''
     user = yield from User.find(id)
     if user is None:
-        raise APIResourceNotFoundError('user %s not found', id)
+        raise APIResourceNotFoundError(id)
+
+    if user.name == 'admin':
+        raise APIError(errors.EUSER_CANNOT_DELETE_ADMIN, 'User %s can not be deleted' % user.name)
 
     yield from user.remove()
-    yield from log_event(logging.INFO, event_api_user, event_action_del,
-                         'delete user %s' % user.name)
+    yield from log_event(logging.INFO, event_user, event_action_del,
+                         'Delete user %s' % user.name)
     return dict(retcode=0)
 
 
@@ -171,12 +185,12 @@ def api_update_user(id, request, *, password):
     user = yield from User.find(id)
 
     if user is None:
-        raise APIResourceNotFoundError('user %s not exist' % id)
+        raise APIResourceNotFoundError(id)
     if not password or not password.strip():
-        raise APIValueError('password can not be empty')
+        raise APIValueError('Password can not be empty')
 
-    user.password = password
+    user.password = hashlib.sha1(password.encode('utf-8')).hexdigest()
     yield from user.update()
-    yield from log_event(logging.INFO, event_api_user, event_action_del,
-                         'update user %s password' % user.name)
+    yield from log_event(logging.INFO, event_user, event_action_mod,
+                         'Update user %s password' % user.name)
     return dict(retcode=0, user=user)

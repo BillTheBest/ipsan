@@ -4,23 +4,24 @@
 import os
 import re
 import uuid
+import json
 import logging
 import asyncio
 import subprocess
 from apivg import _vg_display, _size_to_kb
 from coroweb import get, post
 from config import grgrant_prog
-from models import Target, LUN
+from models import *
 from errors import APIError, APIValueError, APIAuthenticateError, APIResourceNotFoundError
 
 _iqn = 'iqn.2015-08.com.ubique:%s'
 
-_tgtadm_cmd = '/usr/sbin/tgtadm --lld iscsi'
+_tgtadm_cmd = '%s /usr/sbin/tgtadm --lld iscsi' % grgrant_prog
 _tgtadm_show_target = _tgtadm_cmd + ' --mode target --op show'
 _tgtadm_new_target = _tgtadm_cmd + ' --mode target --op new --tid %s --targetname %s'
 _tgtadm_del_target = _tgtadm_cmd + ' --mode target --op delete --force --tid %s'
 _tgtadm_new_lun = _tgtadm_cmd + ' --mode logicalunit --op new --tid %s --lun %s -b %s'
-_tgtadm_acl_all = _tgtadm_cmd + '--mode target --op bind --tid %s -I ALL'
+_tgtadm_acl_all = _tgtadm_cmd + ' --mode target --op bind --tid %s -I ALL'
 
 _re_target_name = re.compile(r'^[a-z_A-Z0-9]{1,20}')
 
@@ -32,6 +33,10 @@ _re_lun = re.compile(r'^LUN:[^0-9]+([1-9]{1}[0-9]{0,})')
 _re_lun_name = re.compile(r'Backing store path:\s+([^\n]+)')
 _re_lun_type = re.compile(r'Type:\s+([^\n]+)')
 _re_lun_size = re.compile(r'^Size:\s+([^\s]+)\s([^\s]+)')
+_re_nexus = re.compile(r'^I_T nexus:\s+([^\n]+)')
+_re_initiator_name = re.compile(r'^Initiator:\s+([^\s]+)')
+_re_initiator_conn = re.compile(r'^Connection:\s+([^\n]+)')
+_re_initiator_addr = re.compile(r'^IP Address:\s+([^\n]+)')
 
 _lun_unknow_state = 0
 _lun_active_state = 1
@@ -52,49 +57,69 @@ def _parse_show_target(output):
         line = line.strip()
         if len(line) == 0:
             continue
-        r_target = _re_target.match(line)
-        if r_target:
+        r = _re_target.match(line)
+        if r:
             target = Target()
-            target.tid = r_target.group(1)
-            target.iqn = r_target.group(2)
+            target.tid = r.group(1)
+            target.iqn = r.group(2)
             colon_pos = target.iqn.rfind(':')
             target.name = target.iqn[colon_pos+1:] if colon_pos != -1 else None
             target.luns = []
+            target.sessions = []
             targets.insert(0, target)
-        r_drive = _re_target_driver.match(line)
-        if r_drive:
-            targets[0].driver = r_drive.group(1)
-        r_state = _re_target_state.match(line)
-        if r_state:
-            targets[0].state = _target_state.get(r_state.group(1), 0)
-        r_lun = _re_lun.match(line)
-        if r_lun:
+        r = _re_target_driver.match(line)
+        if r:
+            targets[0].driver = r.group(1)
+        r = _re_target_state.match(line)
+        if r:
+            targets[0].state = _target_state.get(r.group(1), 0)
+
+        if len(targets) > 0:
+            r = _re_nexus.match(line)
+            if r:
+                session = dict()
+                session['sid'] = int(r.group(1))
+                targets[0].sessions.insert(0, session)
+        if len(targets) > 0 and len(targets[0].sessions) > 0:
+            r = _re_initiator_name.match(line)
+            if r:
+                targets[0].sessions[0]['initiator'] = r.group(1)
+            r = _re_initiator_conn.match(line)
+            if r:
+                targets[0].sessions[0]['cid'] = int(r.group(1))
+                targets[0].sessions[0]['connections'] = []
+            r = _re_initiator_addr.match(line)
+            if r:
+                targets[0].sessions[0]['connections'].append(r.group(1))
+
+        r = _re_lun.match(line)
+        if r:
             lun = LUN()
-            lun.lid = int(r_lun.group(1))
+            lun.lid = int(r.group(1))
             targets[0].luns.insert(0, lun)
         if len(targets[0].luns) > 0:
-            r_lun_type = _re_lun_type.match(line)
-            if r_lun_type:
-                targets[0].luns[0].type = r_lun_type.group(1)
-            r_lun_name = _re_lun_name.match(line)
-            if r_lun_name:
-                targets[0].luns[0].name = r_lun_name.group(1)
-            r_lun_size = _re_lun_size.match(line)
-            if r_lun_size:
-                targets[0].luns[0].size = yield from _size_to_kb(r_lun_size.group(1), r_lun_size.group(2))
+            r = _re_lun_type.match(line)
+            if r:
+                targets[0].luns[0].type = r.group(1)
+            r = _re_lun_name.match(line)
+            if r:
+                targets[0].luns[0].name = r.group(1)
+            r = _re_lun_size.match(line)
+            if r:
+                targets[0].luns[0].size = yield from _size_to_kb(r.group(1), r.group(2))
 
     return targets
 
 
 @asyncio.coroutine
 def _get_targets():
-    targets = []
     try:
         output = subprocess.check_output(_tgtadm_show_target.split(' '), universal_newlines=True)
         targets = yield from _parse_show_target(output)
+        return targets
     except subprocess.CalledProcessError as e:
         logging.exception(e)
-    return targets
+        return None
 
 
 def _save_target(target):
@@ -113,6 +138,8 @@ def _save_target(target):
 @asyncio.coroutine
 def _get_next_tid():
     targets = _get_targets()
+    if targets is None:
+        return None
     tids = [target.tid for target in targets]
     # target id start from 1
     for i in range(1, 1000):
@@ -126,6 +153,12 @@ def _get_next_tid():
 def api_targets(request):
     '''
     Get all targets. Request url:[GET /api/targets]
+
+    Response data:
+
+        target state: 0-unknow; 1-ready; 2-inactive;
+
+        lun state: 0-unknow; 1-active; 2-inactive;
     '''
     targets = yield from Target.findall()
     if targets is None:
@@ -150,6 +183,7 @@ def api_targets(request):
                 yield from lun.update()
         else:
             target_cur = targets_dict[target.iqn]
+            target.sessions = target_cur.sessions
 
             for lun in luns:
                 exist = False
@@ -209,7 +243,7 @@ def api_get_target(*, id):
 
 
 @post('/api/targets')
-def api_create_target(*, name, **kw):
+def api_create_target(*, name, lun):
     '''
     Create target. Request url:[POST /api/targets]
 
@@ -217,27 +251,20 @@ def api_create_target(*, name, **kw):
 
         name: target name
 
-        lun0: lun_device0. example: /dev/vg0/lv0
-
-        lun1: lun_device1. example: /dev/vg0/lv1
-
+        lun: lun device array. example: [/dev/vg0/lv0,...]
         ...
     '''
     if name is None or not name.strip():
         raise APIValueError('name')
     r = _re_target_name.match(name)
-    print(r, r is None)
     if not _re_target_name.match(name):
         raise APIValueError('name')
 
     # valid lun
-    luns = []
-    for k, v in kw.items():
-        if not k.startswith('lun'):
-            continue
-        if not os.path.exists(v):
-            raise APIValueError('block %s not exists' % v)
-        luns.append(v)
+    luns = json.loads(lun)
+    for lun in luns:
+        if not os.path.exists(lun):
+            raise APIValueError('Lun %s not exists' % lun)
 
     target = yield from Target.findall(where="name='%s'" % name)
     if target and len(target) > 0:
@@ -251,23 +278,24 @@ def api_create_target(*, name, **kw):
     cmd = _tgtadm_new_target % (str(tid), name)
     # create target
     r = subprocess.call(cmd.split(' '))
+
     if r != 0:
         return dict(retcode=701, message='create target error')
     # enable all client to access target
     cmd = _tgtadm_acl_all % str(tid)
     r = subprocess.call(cmd.split(' '))
     if r != 0:
-        return dict(retcode=701, message='enable target ACL to all fialure')
+        return dict(retcode=701, message='enable target ACL to all failure')
 
 
     # add lun
     lid = 0  #lun id start from 1
     for lun in luns:
         lid += 1
-        cmd = _tgtadm_new_lun % (str(tid), str(lid), v)
+        cmd = _tgtadm_new_lun % (str(tid), str(lid), lun)
         r = subprocess.call(cmd.split(' '))
         if r != 0:
-            return dict(retcode=702, message='add lun %s to target error' % v)
+            return dict(retcode=702, message='add lun %s to target error' % lun)
 
     targets = yield from _get_targets()
     for target in targets:
@@ -283,6 +311,8 @@ def api_create_target(*, name, **kw):
 
     # save target
     _save_target(target)
+    yield from log_event(logging.INFO, event_target, event_action_add,
+                         'Create target %s.' % (target.iqn))
     return dict(retcode=701, target='create target error')
 
 
@@ -295,16 +325,22 @@ def api_delete_target(*, id):
     if target is None:
         raise APIResourceNotFoundError('target %s' % id)
 
-    cmd = _tgtadm_del_target % (target.tid)
-    try:
-        subprocess.check_output(cmd.split(' '))
-    except subprocess.CalledProcessError as e:
-        logging.exception(e)
-        return dict(retcode=704, message='delete target error')
+    targets = _get_targets()
+    target_names = [target.name for target in targets]
+
+    if target.name in target_names:
+        cmd = _tgtadm_del_target % (target.tid)
+        try:
+            subprocess.check_output(cmd.split(' '))
+        except subprocess.CalledProcessError as e:
+            logging.exception(e)
+            return dict(retcode=704, message='delete target error')
 
     # delete from db
     luns = yield from LUN.findall(where="tid='%s'" % target.id)
     for lun in luns:
         yield from lun.remove()
     yield from target.remove()
+    yield from log_event(logging.INFO, event_target, event_action_del,
+                         'Delete target %s.' % (target.iqn))
     return dict(retcode=0)
