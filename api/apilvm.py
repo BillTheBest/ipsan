@@ -82,7 +82,8 @@ def _lvm_create(name, vgname, size):
     args = [grgrant_prog, _lvcreate_prog, '-L', size, '-n', name, vgname]
     try:
         subprocess.check_output(args)
-        return _lvm_display()
+        r = yield from _lvm_display()
+        return r
     except subprocess.CalledProcessError as e:
         logging.exception(e)
 
@@ -204,7 +205,7 @@ def api_delete_lvm(*, id):
     if not lvm:
         raise APIResourceNotFoundError('lvm %s' % id)
 
-    lvms = _lvm_display()
+    lvms = yield from _lvm_display()
     for l in lvms:
         if l.id == id:
             r = yield from _lvm_delete(lvm)

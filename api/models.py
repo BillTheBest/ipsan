@@ -37,7 +37,7 @@ class Disk(Model):
     name = StringField()
     device = StringField()
     state = IntegerField()
-    array_id = IntegerField()
+    array_id = StringField(default="")
     slot = IntegerField()
     capacity = IntegerField()
 

@@ -148,7 +148,7 @@ def api_ceate_user(*, name, password):
     if len(users) > 0:
         raise APIError(errors.EUSER_ALREADY_EXISTS, 'User %s already exist' % name)
 
-    user = User(name=name, password=password)
+    user = User(id=uuid.uuid4().hex, name=name, password=password)
     yield from user.save()
     yield from log_event(logging.INFO, event_user, event_action_add,
                          'Add user %s' % name)

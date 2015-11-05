@@ -64,7 +64,7 @@ def api_events(request, **kw):
             else:
                 return dict(retcode=0, total=0, events=[])
 
-    total = yield from Event.findNumber('count(id)', where)
+    total = yield from Event.findNumber('count(id)', ' and '.join(where))
     events = []
     if not page_size:
         page_size = 10

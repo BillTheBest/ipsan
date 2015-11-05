@@ -119,7 +119,7 @@ def _get_targets():
         return targets
     except subprocess.CalledProcessError as e:
         logging.exception(e)
-        return None
+        return []
 
 
 def _save_target(target):
@@ -137,7 +137,7 @@ def _save_target(target):
 
 @asyncio.coroutine
 def _get_next_tid():
-    targets = _get_targets()
+    targets = yield from _get_targets()
     if targets is None:
         return None
     tids = [target.tid for target in targets]
@@ -325,7 +325,7 @@ def api_delete_target(*, id):
     if target is None:
         raise APIResourceNotFoundError('target %s' % id)
 
-    targets = _get_targets()
+    targets = yield from _get_targets()
     target_names = [target.name for target in targets]
 
     if target.name in target_names:
