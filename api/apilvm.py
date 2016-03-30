@@ -169,6 +169,8 @@ def api_lvm_create(*, name, vgname, size):
     '''
     if not name or not name.strip():
         raise APIValueError('name')
+    if not re.match(r'^[a-z_A-Z0-9]{1,20}', name):
+        raise APIValueError("name")
     if not size or not size.strip():
         raise APIValueError('size')
     if not size[-1] in ['K','M','G','T','P']:
@@ -214,7 +216,7 @@ def api_delete_lvm(*, id):
     yield from lvm.remove()
     yield from log_event(logging.INFO, event_lvm, event_action_del,
                          'Delete LVM %s.' % (lvm.name))
-    return dict(retcode=0)
+    return dict(retcode=0, id=id)
 
 
 @post('/api/lvms/{id}')
@@ -230,6 +232,9 @@ def api_update_lvm(id, request, *, name):
     '''
     if not name or not name.strip():
         raise APIValueError('name:%s' % name)
+    if not re.match(r'^[a-z_A-Z0-9]{1,20}', name):
+        raise APIValueError("name")
+
     lvm = yield from LVM.find(id)
     if not lvm:
         raise APIResourceNotFoundError('vg %s' % id)

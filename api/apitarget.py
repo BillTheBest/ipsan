@@ -124,15 +124,12 @@ def _get_targets():
 
 def _save_target(target):
     target_conf_file = os.path.join('/etc/tgt/conf.d', '%s.conf' % target.iqn)
-    target_conf = '''
-        default-driver iscsi
-
-        <target %s>
-            %s
-        </target>
-    '''
-    backing_stroe_list = ['backing-store %s' % lun.name for lun in target.luns]
-    open(target_conf_file, 'w').write(target_conf % (target.iqn, os.linesep.join(backing_stroe_list)))
+    with open(target_conf_file, 'w') as f:
+        f.write('<target %s>\n' % target.iqn)
+        for lun in target.luns:
+            f.write('    backing-store %s\n' % lun.name)
+        f.write('    controller_tid %s\n' % target.tid)
+        f.write('</target>')
 
 
 @asyncio.coroutine
@@ -177,6 +174,7 @@ def api_targets(request):
         if target.iqn not in targets_dict:
             # inactive target and luns
             target.state = _target_state['inactive']
+            target.sessions = []
             yield from target.update()
             for lun in luns:
                 lun.state = _lun_inactive_state
@@ -243,7 +241,7 @@ def api_get_target(*, id):
 
 
 @post('/api/targets')
-def api_create_target(*, name, lun):
+def api_create_target(*, name, tid, type,  lun):
     '''
     Create target. Request url:[POST /api/targets]
 
@@ -251,28 +249,52 @@ def api_create_target(*, name, lun):
 
         name: target name
 
+        tid: target id in numeric. ensure the tid is unique when exists multiple ipsan server
+
+        type: 1-lvm; 2-disk;
+
         lun: lun device array. example: [/dev/vg0/lv0,...]
         ...
     '''
     if name is None or not name.strip():
         raise APIValueError('name')
-    r = _re_target_name.match(name)
     if not _re_target_name.match(name):
         raise APIValueError('name')
 
+    if not type.isnumeric():
+        raise APIValueError("type")
+
+    if not tid.isnumeric():
+        raise APIValueError("target id")
+
+    tid = int(tid)
+
+    if tid <= 0 or tid > 1000:  # assume max tid is 1000
+        raise APIValueError("target id(number)")
+
+    ct = int(type)
+
     # valid lun
     luns = json.loads(lun)
+    if not luns or len(luns) == 0:
+        raise APIValueError("lun")
+
     for lun in luns:
         if not os.path.exists(lun):
             raise APIValueError('Lun %s not exists' % lun)
+
+    target = yield from Target.findall(where="tid=%s" % tid)
+    if target and len(target) > 0:
+        return dict(retcode=701, message='target id %s already exists' % tid)
 
     target = yield from Target.findall(where="name='%s'" % name)
     if target and len(target) > 0:
         return dict(retcode=700, message='target %s already exists' % name)
 
-    tid = yield from _get_next_tid()
-    if tid is None:
-        return dict(retcode=703, message='too many targets in this server')
+    # get tid from user input
+    # tid = yield from _get_next_tid()
+    # if tid is None:
+    #    return dict(retcode=703, message='too many targets in this server')
 
     name = _iqn % name
     cmd = _tgtadm_new_target % (str(tid), name)
@@ -306,13 +328,21 @@ def api_create_target(*, name, lun):
                 lun.id = uuid.uuid4().hex
                 lun.tid = target.id
                 yield from lun.save()
+                if ct == 2:
+                    r = yield from Disk.findall(where="device='%s'" % lun.name)
+                    if r and len(r) > 0:
+                        disk = r[0]
+                        disk.used_by = target.id
+                        disk.used_for = 2 # used for target
+                        yield from disk.update()
 
+            # save target
+            _save_target(target)
+            yield from log_event(logging.INFO, event_target, event_action_add,
+                         'Create target %s.' % (target.iqn))
             return dict(retcode=0, target=target)
 
-    # save target
-    _save_target(target)
-    yield from log_event(logging.INFO, event_target, event_action_add,
-                         'Create target %s.' % (target.iqn))
+    # create target error
     return dict(retcode=701, target='create target error')
 
 
@@ -343,4 +373,17 @@ def api_delete_target(*, id):
     yield from target.remove()
     yield from log_event(logging.INFO, event_target, event_action_del,
                          'Delete target %s.' % (target.iqn))
-    return dict(retcode=0)
+
+    # reset disk user information
+    disks = yield from Disk.findall(where="used_by='%s'" % id)
+    if disks and len(disks) > 0:
+        for disk in disks:
+            disk.used_by = ''
+            disk.used_for = 0
+            yield from disk.update()
+
+    target_conf_file = os.path.join('/etc/tgt/conf.d', '%s.conf' % target.iqn)
+    if os.path.exists(target_conf_file):
+        os.remove(target_conf_file)
+
+    return dict(retcode=0, id=id)

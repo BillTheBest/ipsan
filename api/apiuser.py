@@ -76,7 +76,8 @@ def api_login(*, user, password):
     # set cookie
     r = web.Response()
     r.set_cookie(COOKIE_NAME, user2cookie(user, 86400), max_age=86400, httponly=True)
-    r.content_type = 'application/json;charset=utf8'
+    r.content_type = 'application/json;charset=utf-8'
+    r.headers['Content-type'] = 'application/json;charset=utf-8'
     r.headers['Access-Control-Allow-Origin'] = '*'
     r.headers['Access-Control-Allow-Credentials'] = 'true'
     d = dict(retcode=0, user=user)
@@ -170,7 +171,7 @@ def api_delete_user(*, id):
     yield from user.remove()
     yield from log_event(logging.INFO, event_user, event_action_del,
                          'Delete user %s' % user.name)
-    return dict(retcode=0)
+    return dict(retcode=0, id=id)
 
 
 @post('/api/users/{id}')

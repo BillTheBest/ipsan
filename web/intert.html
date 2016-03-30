@@ -1,0 +1,134 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+	<script type="text/javascript" src="js/jquery.input-ip-address-control-1.0.min.js"></script>
+	<style>
+		.banner{ margin-top: 30px;}
+		.intert_info{ width: 300px; margin: 40px auto 0 auto;}
+		.intert_info p{margin-top: 20px;}
+		.intert_info p span{ display: inline-table; text-align: right; width: 70px;}
+		.submit{ margin-left: 86px;}
+		#operation0{ margin-left: 88px;}
+	</style>
+	<script>
+		$(function(){
+		    $('#ip').ipAddress();
+        	    $('#mask').ipAddress();
+		});
+		var num;
+		var arr_ip = [];
+		var arr_mask = [];
+		function output(data){
+			for(var i=0;i<data.interfaces.length;i++){
+				$("#network").append("<tr><td>"+data.interfaces[i].interface+"</td><td>"+data.interfaces[i].ip+"</td><td>"+data.interfaces[i].mask+"</td><td>"+data.interfaces[i].mac+"</td><td>"+data.interfaces[i].state+"</td></tr>");
+				$("#interface_list").append("<input type=\"radio\" id=\"operation"+i+"\" value=\""+data.interfaces[i].interface+"\" name=\"radio\" onclick=\"radio()\"/><span id=\"interface"+i+"\">"+data.interfaces[i].interface+"</span>&nbsp;&nbsp;&nbsp;&nbsp;");
+				arr_ip[i] = data.interfaces[i].ip;
+				arr_mask[i] = data.interfaces[i].mask;
+            }
+            num = i;
+		}
+		function network(){
+			var r = ajax_http("network","get","",output);
+			if(!r)
+			{
+				alert("Reqeust failure");
+			}  	 
+        }
+        function output_updata(data){
+        	if (data.retcode == "0") {
+                alert_info("prompt_ok", __tr("Operation Success"));
+                location.reload();
+            }
+            else
+            {                        
+                alert_info("prompt_err",data.message);
+            } 
+        }
+		function inter(){
+			var interface=checked(num);
+			if (typeof(interface)=="undefined") {
+				alert_info("prompt_war", __tr("No Interface"));
+				return false;
+			}
+			var ip = $("#ip").val();
+			var mask = $("#mask").val();
+			if(ip.trim()==""){
+                alert_info("prompt_war", __tr("No IP"));
+                return false;
+            }
+            if(mask.trim()==""){
+                alert_info("prompt_war", __tr("No Mask"));
+                return false;
+            }
+			var data = {
+				"interface" : interface,
+				"ip" : ip,
+				"mask" : mask
+			};
+			var r = ajax_http("network","post",data,output_updata);
+			if(!r)
+			{
+				alert("Reqeust failure");
+			}        	
+		}
+
+		function checked(num){
+    		for(i=0;i<num;i++){
+        		var operationn = "operation"+i;
+        		if(document.getElementById(operationn).checked){
+            		interface=document.getElementById(operationn).value;
+            		return interface;
+        		}
+    		}
+		}
+
+		function radio(){
+			for(i=0;i<num;i++){
+        		var operationn = "operation"+i;
+        		if(document.getElementById(operationn).checked){
+				if (arr_ip[i] != "")
+				    $("#ip").val(arr_ip[i]);
+				else
+				    $("#ip").val("0.0.0.0");
+					
+				if (arr_mask[i] != "")
+            			    $("#mask").val(arr_mask[i]);
+				else
+            			    $("#mask").val("0.0.0.0");
+			
+        		}
+    		        }
+		}
+	</script>
+</head>
+<body onload="readcookie(),network()">
+	<div class="bd">
+		<p class="headtitle" lang>Network</p>
+		<div class="banner">
+			<p id="message" class="prompt"></p>
+			<hr />
+			<table id="network" border="0" cellspacing="0" cellpadding="0">
+				<tr class="table_title">
+					<td lang>Interface</td>
+					<td lang>IP</td>
+					<td lang>Mask</td>
+					<td lang>MAC</td>
+					<td lang>State</td>
+				</tr>
+			</table>
+			<div class="intert_info">
+				<div id="interface_list"></div>
+				<p><span lang>IP</span><input type="text" id="ip" class="input_text"/></p>
+				<p><span lang>Mask</span><input type="text" id="mask" class="input_text" /></p>
+				<button onclick="inter()" class="submit">Save</button>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

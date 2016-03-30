@@ -1,0 +1,199 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+    <meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+    <title></title>
+    <link rel="stylesheet" type="text/css" href="css/jquery.datetimepicker.css"/>
+    <link rel="stylesheet" type="text/css" href="css/style.css" />
+        <link rel="stylesheet" type="text/css" href="css/kkpager_orange.css" />
+    <script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+    <script type="text/javascript" src="js/js.js"></script>
+    <script type="text/javascript" src="js/kkpager.js"></script>
+    <style>
+        .banner{ margin-top: 20px;}
+        .input_select{ margin-left: 8px; width: 70px;}
+        #datetimepicker,#datetimepicker1{ width: 135px; height: 30px; line-height: 30px; margin: 20px 5px 20px 10px; background:url(./images/datetime.png) right no-repeat white; cursor:pointer; border: 1px solid #eee;}  
+        td{ text-align: center;}
+        #pagesize{ width: 40px; text-align: center; margin: 0 5px; font-size: 14px; }
+        #pages{ margin-left: auto; margin-right: auto; float: left; margin: 10px auto 0 auto; width: 600px;}
+    </style>
+    <script>
+        $(document).ready(function(){  
+            $(document).on("mouseover",".tr",function(){            
+                $(this).css("background","#F9F9F9");
+            });
+            $(document).on("mouseout",".tr",function(){            
+                $(this).css("background","transparent");
+            });
+        });
+
+        function show_data(data){
+            $("tr").remove(".tr");
+            for(var i=0;i<data.events.length;i++){
+                var time_at = data.events[i].created_at;
+                var date = Time(time_at);
+                var level_arr = [dict["Debug"], dict["Info"], dict["Warn"], dict["Error"], dict["Critical"]];
+                var level = level_arr[((data.events[i].level)/10)-1];
+                var action_arr = [dict["Add"], dict["Delete"], dict["Modify"], dict["View"], dict["Login"], dict["Logout"], dict["Reboot"], dict["Poweroff"], dict["Network2"], dict["Upgrade2"]];
+                var action = action_arr[(data.events[i].action)-1];
+                var type_arr = [dict["OS"], dict["Upgrade"], dict["User"], dict["Array"], dict["VG"], dict["LV"], dict["Target"]];
+                var type = type_arr[(data.events[i].type)-1];
+                $("#events").append("<tr class=\"tr\"><td>"+data.events[i].message+"</td><td>"+action+"</td><td>"+type+"</td><td>"+level+"</td><td>"+date+"</td></tr>");
+            }
+        }
+
+        function on_query_page_cb(data){
+            show_data(data);
+        }
+
+    var totalPage;
+	   function on_query_cb(data){
+            if (data.retcode != 0){
+                alert_info("prompt_err",data.message);
+                return;
+            }
+		var kk_lang = {
+		firstPageText: dict["firstPageText"],
+		firstPageTipText: dict["firstPageText"],
+		lastPageText: dict["lastPageText"],
+		lastPageTipText: dict["lastPageText"],
+		prePageText: dict["prePageText"],
+		prePageTipText: dict["prePageText"],
+		nextPageText: dict["nextPageText"],
+		nextPageTipText: dict["nextPageText"],
+		totalPageBeforeText: dict["totalPageBeforeText"],
+		totalPageAfterText: dict["totalPageAfterText"],
+		currPageBeforeText: dict["currPageBeforeText"],
+		currPageAfterText: dict["currPageAfterText"],
+		totalRecordsBeforeText: dict["totalRecordsBeforeText"],
+		totalRecordsAfterText: dict["totalRecordsAfterText"],
+		gopageBeforeText: dict["gopageBeforeText"],
+		gopageButtonOkText: dict["gopageButtonOkText"],
+		gopageAfterText: dict["gopageAfterText"],
+		buttonTipBeforeText: dict["buttonTipBeforeText"],
+		buttonTipAfterText: dict["buttonTipAfteText"]
+	};
+            show_data(data);
+            var pagesize  = $("#pagesize").val();
+            totalPage = Math.ceil(data.total/pagesize);
+            var pageNo = 1;
+            kkpager.generPageHtml({
+                pno : pageNo,
+                total : totalPage,
+                totalRecords : data.total,
+                mode : 'click',
+		lang: kk_lang,
+                click : function(pageno){
+                    var url = get_query_url(pageno);
+            this._config.total = totalPage;
+                    ajax_http(url, "get", "", on_query_page_cb);
+                    this.selectPage(pageno);
+                }
+            },true);
+        }
+
+        function do_query(){ 
+            var url = get_query_url(1); //first page is 1
+            var r = ajax_http(url, "get", "", on_query_cb);
+            if(!r)
+            {
+                alert("Reqeust failure");   
+            }
+        } 
+
+        function get_query_url(page){
+            var level = $("#search_level").val();
+            var type = $("#search_type").val();
+            var action = $("#search_action").val();
+            var time1 =  $("#datetimepicker").val();
+            var time2 = $("#datetimepicker1").val();
+            var pagesize = $("#pagesize").val();
+            var begin_time =(new Date(time1).getTime())/1000;
+            var end_time = (new Date(time2).getTime())/1000;
+            var url = "events?"
+            var condition_name = ['page=','&pagesize=','&level=','&type=','&action=','&begin=','&end='];
+            var condition = [page,pagesize,level,type,action,begin_time,end_time];
+            for(i=0;i<condition.length;i++){
+                if (condition[i]!="" && !isNaN(condition[i])) {
+                    url = url+condition_name[i]+condition[i];
+                }
+            }
+            return url;
+        }
+    </script>
+</head>
+<body onload="readcookie(),do_query()">
+    <div class="bd">   
+        <p class="headtitle" lang>Event</p>
+        <div class="banner">
+            <p id="message" class="prompt"></p>
+            <div id="screening">
+                <span lang>Date</span><input type="text" value="" id="datetimepicker"/>~<input type="text" value="" id="datetimepicker1"/>
+                <span lang>Level</span><select id="search_level" class="input_select">
+                    <option value="" lang>All</option>
+                    <option value="10" lang>Debug</option>
+                    <option value="20" lang>Info</option>
+                    <option value="30" lang>Warn</option>
+                    <option value="40" lang>Error</option>
+                    <option value="50" lang>Critical</option>
+                </select>           
+                <span lang>Type</span><select id="search_type" class="input_select">
+                    <option value="" lang>All</option>
+                    <option value="1" lang>OS</option>
+                    <option value="2" lang>Upgrade2</option>
+                    <option value="3" lang>User</option>
+                    <option value="4" lang>Array</option>
+                    <option value="5" lang>VG</option>
+                    <option value="6" lang>LV</option>
+                    <option value="7" lang>Target</option>
+                </select>
+                <span lang>Action</span><select id="search_action" class="input_select">
+                    <option value="" lang>All</option>
+                    <option value="1" lang>Add</option>
+                    <option value="2" lang>Delete</option>
+                    <option value="3" lang>Modify</option>
+                    <option value="4" lang>View</option>
+                    <option value="5" lang>Login</option>
+                    <option value="6" lang>Logout</option>
+                    <option value="7" lang>Reboot</option>
+                    <option value="8" lang>Poweroff</option>
+                    <option value="9" lang>Network2</option>
+                </select>
+                <button onclick="do_query()" class="search" lang>GO</button>
+            </div>
+            <!-- <p><input type="button" onclick="events_clear()" value="清除日志" /></p> -->
+            <hr />
+            <table id="events" border="0" cellspacing="0" cellpadding="0">
+                <tr class="table_title">
+                    <td lang>Message</td>
+                    <td lang>Action</td>
+                    <td lang>Type</td>
+                    <td lang>Level</td>
+                    <td lang>Date</td>
+                </tr>    
+            </table>            
+            <p style=" width:120px; margin-top:18px; float:left;"><span lang>Page Size</span><select id="pagesize">
+                    <option value="6">6</option>
+                    <option value="8">8</option>
+                    <option selected="selected" value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                </select>
+            </p>
+            <div id="pages">                
+               <div id="kkpager"></div> 
+            </div>
+        </div>
+    </div>
+</body>
+<script src="js/jquery.datetimepicker.full.js"></script>
+<script>
+    var lang = getLanguage();
+    $.datetimepicker.setLocale(lang);
+    $('#datetimepicker').datetimepicker();
+    $('#datetimepicker1').datetimepicker();
+    $('#datetimepicker').datetimepicker({value:'',step:10});
+    $('#datetimepicker1').datetimepicker({value:'',step:10});
+</script>
+</html>

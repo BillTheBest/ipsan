@@ -78,7 +78,7 @@ def _array_parse_output(output):
                 disk['device'] = ""
 
             d = yield from Disk.findall(where="device='%s'" % disk['device'])
-            if len(d) > 0:
+            if d and len(d) > 0:
                 disk['name'] = d[0].name
                 disk['capacity'] = d[0].capacity
             array.disks.append(disk)
@@ -119,7 +119,6 @@ def _array_create(level, disks, chunk=512, spares=None):
         subprocess.check_output(args, universal_newlines=True)
         return device
     except subprocess.CalledProcessError as e:
-        logging.error(e.returncode, e.output, e.cmd)
         logging.exception(e)
 
 
@@ -156,16 +155,22 @@ def _array_detail(array):
 
 @asyncio.coroutine
 def _array_destroy(array, disks):
-    try:
-        # stop array
-        if os.path.exists(array.device):
+    retry_times = 3
+    while os.path.exists(array.device) and retry_times > 0:
+        try:
+            # stop array
             subprocess.check_output([grgrant_prog, mdadm_prog, '-S', array.device],
-                                universal_newlines=True)
+                                        universal_newlines=True)
 
-    except subprocess.CalledProcessError as e:
-        logging.error(e.returncode, e.output, e.cmd)
-        logging.exception(e)
+        except subprocess.CalledProcessError as e:
+            logging.error(e.returncode, e.output, e.cmd)
+            logging.exception(e)
+        finally:
+            retry_times -= 1
+
+    if os.path.exists(array.device):
         return False
+
     try:
         # destroy array
         devices = [disk.name for disk in disks]
@@ -238,6 +243,9 @@ def api_create_array(*, name, level, chunk, disk, spare):
 
         spares: spare disk device array in json format.
     '''
+
+    if not re.match(r'^[a-z_A-Z0-9]{1,20}', name):
+        raise APIValueError("name")
     array = yield from Array.findall(where="name='%s'" % name)
     if array:
         return dict(retcode=401, message='Array %s already exists' % name)
@@ -251,13 +259,13 @@ def api_create_array(*, name, level, chunk, disk, spare):
     # valid disk
     for dev in data_devname:
         r = yield from Disk.findall(where="device='%s'" % dev)
-        if len(r) == 0:
+        if not r or len(r) == 0:
             raise APIResourceNotFoundError('%s' % dev)
         disks.append(r[0])
 
     for dev in spares:
         r = yield from Disk.findall(where="device='%s'" % dev)
-        if len(r) == 0:
+        if not r or len(r) == 0:
             raise APIResourceNotFoundError('%s' % dev)
         spares.append(r[0])
 
@@ -271,7 +279,7 @@ def api_create_array(*, name, level, chunk, disk, spare):
     if level not in at_least_disk:
         return dict(retcode=402, message='Invalid raid level %s' % level)
     if len(disks) < at_least_disk[level]:
-        return dict(retcode=404, message='Raid %s need at least %s didks' %
+        return dict(retcode=404, message='Raid %s need at least %s disks' %
                     (level, at_least_disk[level]))
 
     array_device = yield from _array_create(level, data_devname, chunk, spare_devname)
@@ -285,7 +293,8 @@ def api_create_array(*, name, level, chunk, disk, spare):
 
     # update array id of each array disk
     for disk in  disks:
-        disk.array_id = array.id
+        disk.used_by = array.id
+        disk.used_for = 1 # 1 for raid
         yield from disk.update()
 
     yield from log_event(logging.INFO, event_array, event_action_add,
@@ -301,17 +310,18 @@ def api_delete_array(*, id):
     array = yield from Array.find(id)
     if array is None:
         raise APIResourceNotFoundError('array %s' % id)
-    disks = yield from Disk.findall(where="array_id='%s'" % id)
+    disks = yield from Disk.findall(where="used_by='%s'" % id)
     r = yield from _array_destroy(array, disks)
     if not r:
         return dict(retcode=406, message='delete array %s failure' % id)
 
     yield from array.remove()
     for disk in disks:
-        disk.array_id = ''
+        disk.used_by = ''
+        disk.used_for = 0
         disk.state = 0
         yield from disk.update()
 
     yield from log_event(logging.INFO, event_array, event_action_del,
                          "Delete array %s" % array.name)
-    return dict(retcode=0)
+    return dict(retcode=0, id=id)

@@ -179,6 +179,9 @@ def api_create_vg(*, name, pv):
     '''
     if not name or not name.strip():
         raise APIValueError('name')
+    if not re.match(r'^[a-z_A-Z0-9]{1,20}', name):
+        raise APIValueError("name")
+
     vg = yield from VG.findall(where="name='%s'" % name)
     if vg:
         return dict(retcode=501, message='Volume group %s already exists' % name)
@@ -228,7 +231,7 @@ def api_delete_vg(*, id):
     yield from vg.remove()
     yield from log_event(logging.INFO, event_vg, event_action_del,
                          'Delete volume group %s.' % (vg.name))
-    return dict(retcode=0)
+    return dict(retcode=0, id=id)
 
 
 @post('/api/vgs/{id}')
@@ -244,6 +247,10 @@ def api_update_vg(id, request, *, name):
     '''
     if not name or not name.strip():
         raise APIValueError('name:%s' % name)
+
+    if not re.match(r'^[a-z_A-Z0-9]{1,20}', name):
+        raise APIValueError("name")
+
     vg = yield from VG.find(id)
     if not vg:
         raise APIResourceNotFoundError('vg %s' % id)

@@ -42,6 +42,7 @@ def show_ip():
 
 def ifcfg():
     interfaces = get_nic_interfaces()
+    interfaces = [inter for inter in interfaces if inter['interface'] != 'lo']
     nic = len(interfaces) - 1
     address = None
     gateway = None
@@ -58,17 +59,18 @@ def ifcfg():
     if n < 0 or n > nic:
         colorinfo.show_fail('Input must in range [0..%s].' % nic)
         return
-    r = input(colorinfo.format_input_text('%s IP ? ' % interfaces[n]))
+    interface = interfaces[n]['interface']
+    r = input(colorinfo.format_input_text('%s IP ? ' % interface))
     address = validate_ip(r)
     if address is None:
         colorinfo.show_fail('Invalid ip')
         return
-    r = input(colorinfo.format_input_text('%s Mask ? ' % interfaces[n]))
+    r = input(colorinfo.format_input_text('%s Mask ? ' % interface))
     if len(r) > 0:
         r = validate_ip(r)
         if r:
             mask = r
-    r = input(colorinfo.format_input_text('%s Gateway ? ' % interfaces[n]))
+    r = input(colorinfo.format_input_text('%s Gateway ? ' % interface))
     if len(r) == 0:
         colorinfo.show_warning('Skip config gateway')
     else:
@@ -77,7 +79,7 @@ def ifcfg():
             gateway = r
 
     colorinfo.show_info('-'*30)
-    colorinfo.show_info('Interface=%s' % interfaces[n])
+    colorinfo.show_info('Interface=%s' % interface)
     colorinfo.show_info('IP=%s' % address)
     colorinfo.show_info('MASK=%s' % mask)
     if gateway:
@@ -87,7 +89,7 @@ def ifcfg():
     r = confirm('Save network configuration')
 
     if r:
-        config_ip(interfaces[n], address, mask, gateway)
+        config_ip(interface, address, mask, gateway)
 
 
 def reboot():

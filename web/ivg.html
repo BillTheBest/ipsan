@@ -1,0 +1,207 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+    <link type="text/css" rel="stylesheet" href="css/showBo.css" />
+    <script type="text/javascript" src="js/showBo.js"></script>
+	<style>
+		#pv{padding-left: 20px;}
+		#ivg_create,#ivg_updata{ display: none;}
+		.tab{ border: none; }
+		.tab tr td{ border: none; padding: 5px 5px;}
+		.tab tr td:nth-child(1){ text-align: right;}
+		.tab tr td:nth-child(2){ text-align: left; width: 250px;}
+	</style>
+	<script>
+		function add_vg(vg){
+            var state_arr = ["Unknow", "Normal", "Active", "Idle"];
+			var vg_template = '<tr><td><input type="checkbox" name="vgchk" id="{0}"></td><td id="name{0}">{1}</td><td>{2}</td><td>{3}</td></tr>';      		
+			var vg = String.format(vg_template, vg.id, vg.name, state_arr[vg.state], human_size(vg.size, true));
+			$("#ivgs").append(vg);
+		}
+
+		function show_vgs(data){
+			for(var i=0;i<data.vgs.length;i++){
+				add_vg(data.vgs[i]);
+			}	
+		}
+		function add_array(array){
+			var array_template= '<p><input type="checkbox" name="pvchk" id="{0}"/>{1}&nbsp;&nbsp;[RAID{2}&nbsp;&nbsp;{3}]</p>';
+			var array = String.format(array_template, array.device, array.name, array.level, human_size(array.capacity, true));
+			$("#pv").append(array);
+		}
+
+		function show_arrays(data){
+			for(var i=0;i<data.arrays.length;i++)
+			add_array(data.arrays[i]);
+		}
+
+		$(function (){
+			var r = ajax_http("vgs","get","", show_vgs);
+			var e = ajax_http("arrays","get","",show_arrays);
+    		if(!r || !e)
+    		{
+    			alert("Reqeust failure");
+    		} 
+    		$(".close").click(function(){
+        		$(".new").css("display","none");
+    		}); 	
+		});
+
+		function on_vg_create(data){
+			if (data.retcode == "0") {                
+				add_vg(data.vg);
+                alert_info("prompt_ok", __tr("Operation Success"));
+            }
+            else
+            {
+                alert_info("prompt_err",data.message);
+            }	 
+            $(".new").css("display","none");
+		}
+
+		function ivg_create(){
+			var pvs = get_checked_byname("pvchk")
+			var name = $('#name').val();
+			var pvs_str = JSON.stringify(pvs);
+			if(name==null||name.trim()==""){
+				alert_info("prompt_war", __tr("No VG Name"));
+				return false;
+			}
+			var data = {
+				"name" : name,
+            	"pv" : pvs_str
+			};
+			var r = ajax_http("vgs","post",data, on_vg_create);
+			if(!r)
+			{
+				alert("Reqeust failure");
+			}
+		}
+
+		function ivg_create_show(){
+			$("#ivg_create").css("display","block");
+			$("#ivg_updata").css("display","none");
+		}
+		
+		function on_vg_delete(data){
+			if(data.retcode==0){
+				$("#"+data.id).parent().parent("tr").remove();
+				alert_info("prompt_ok", __tr("Operation Success"));
+			}
+			else
+			{                        
+				alert_info("prompt_err",data.message);
+			}
+		}
+		
+		function ivg_delete(){
+			var ids = get_checked_byname("vgchk");
+			var lang = getLanguage();
+			if (ids.length == 0) {
+				alert_info("prompt_war", __tr("No VG"));
+			}else{
+				Showbo.Msg.confirm(__tr("Delete VG"),function(flag){
+					if(flag=='yes'){
+						for(i=0;i<ids.length;i++){
+							var data = {"id" : ids[0]};
+							ajax_http("vgs/"+ids[i]+"/delete","post", data, on_vg_delete);
+						}
+					}
+				}, lang);
+			}
+		}
+
+		$(document).on("change",".operation",function(){
+            $("#newname").css("display","none");
+        });
+
+		var current_vg_id;
+		function ivg_updata_show(){
+			var ids = get_checked_byname("vgchk");
+			if (ids.length != 1) {
+				alert_info("prompt_war",__tr("No VG"));
+				return false;
+			}
+			current_vg_id = ids[0];
+			$("#ivg_updata").css("display","block");
+			$("#ivg_create").css("display","none");
+		}
+
+		function on_vg_update(data){
+			if(data.retcode==0){
+				$("#name"+data.vg.id).html(data.vg.name);
+				$("#ivg_updata").css("display","none");
+                alert_info("prompt_ok", __tr("Operation Success"));
+			}else
+			{
+				alert_info("prompt_err",data.message);
+			}
+		}
+
+		function ivg_update(){		
+			var name = $("#newname").val();
+			if(name.trim()==""){
+        		alert_info("prompt_war", __tr("No VG Name"));
+        		return false;
+    		}
+			var data = {
+				"id" : current_vg_id,
+				"name" : name
+			};
+			var r = ajax_http("vgs/" + current_vg_id, "post",data, on_vg_update);
+			if(!r)
+			{
+				alert("Reqeust failure");        	
+			}      	
+		}
+	</script>
+</head>
+<body onload="readcookie()">
+	<div class="bd">
+		<p class="headtitle" lang>Volume Group</p>
+		<div class="banner">
+			<p id="message" class="prompt"></p>
+			<div class="list">
+				<button onclick="ivg_create_show()" class="add" lang>Add</button>
+				<button onclick="ivg_delete()" class="delete" lang>Delete</button>
+				<button onclick="ivg_updata_show()" class="modify" lang>Modify</button>
+			</div>
+			<hr />
+			<table id="ivgs" border="0" cellspacing="0" cellpadding="0">
+				<tr class="table_title">
+					<td></td>
+					<td lang>Name</td>
+					<td lang>State</td>
+					<td lang>Capacity</td>	
+				</tr>
+			</table>
+			<br />
+			
+			<div id="ivg_create" class="new">
+				<div class="close"></div>
+				<table class="tab">
+					<tr>
+						<td lang>Name</td>
+						<td><input type="text" id="name" class="input_text" placeholder="" /></td>
+					</tr>
+					<tr>
+						<td lang>Physical Volume</td>
+						<td id="pv"></td>
+					</tr>
+				</table>
+				<p><button onclick="ivg_create()" class="submit" lang>Save</button></p>
+			</div>
+			<div id="ivg_updata" class="new">
+				<div class="close"></div>
+				<p><span lang>New VG Name</span><input type="text" id="newname" class="input_text" placeholder=""/></p><br />
+				<p><button onclick="ivg_update()" class="submit" lang>Save</button></p>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

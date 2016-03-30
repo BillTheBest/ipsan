@@ -104,7 +104,7 @@ if not os.path.exists(log_dir):
     os.mkdir(log_dir)
 
 logging.basicConfig(level=logging.INFO,
-                    filename=os.path.join(log_dir, "ipsanapi.log"),
+                    filename=os.path.join(log_dir, "api.log"),
                     format='%(asctime)s %(levelname)s:%(message)s')
 
 loop = asyncio.get_event_loop()

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">	
+	<title>IPSAN</title>
+	<link rel="shortcut icon" href="./images/favicon.ico" type="image/x-icon">
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+	<style>
+		.bd{ width: 80%;}
+		.logo{ float: left; margin-left: 15px; margin-top: 4px;}
+		.exit{ color: white; font-weight: bold; font-size: 16px; float: right; padding-right: 25px; line-height: 30px; cursor: pointer;}
+		.exit img{margin-left: 10px; float: right; margin-top: 5px;}
+		.welecome{ color: white; background: #3D3E43; padding: 15px 0 20px 10px;}
+		.welecome #hello{ color:#F79999; font-size: 16px; font-weight: bold; margin-left: 5px;}
+		.welecome #time{ margin-top: 5px;}
+	</style>
+	<script>
+		$(document).ready(function checkCookie()
+		{
+			username=getCookie('username');
+			if (username!=null && username!="")
+  			{
+  				hello.insertAdjacentHTML("afterBegin",username);
+  			}
+			else 
+  			{
+  				window.location.href="index.html";
+  				if (username!=null && username!="")
+    			{
+    				setCookie('username',username,30);
+   	 			}
+  			}
+		});
+
+		function logout(){
+			var username=getCookie('username');
+			var data = {
+				"user" : username
+			};
+			var r = ajax_http("logout","post",data);
+			if(!r){
+				alert("Reqeust failure");
+			} 
+			window.parent.location.href="index.html";
+			setCookie("username","",-1);
+		}
+	
+		function output(data){
+			var str = data.datetime;
+			$("#time").text(str.substring(0,str.length - 3));
+		}
+
+		function nowtime(){
+			var r = ajax_http("datetime","get","",output);
+			if(!r){
+				alert("Reqeust failure");
+			}
+			setTimeout("nowtime()",60000);
+		}
+            // document.getElementById('time').innerHTML = data.getFullYear()+"年"+(data.getMonth()+1)+"月"+data.getDate()+"日"+data.getHours()+"时"+data.getMinutes()+"分";
+        
+        $(function() {
+        	$("#enBtn").bind("click", function() {  
+        		setLanguage("en");  
+			window.parent.location.reload();
+    		}); 
+      
+    		$("#zhBtn").bind("click", function() {  
+        		setLanguage("zh");  
+			window.parent.location.reload();
+    		}); 
+        });
+    </script>
+</head>
+<body onload="nowtime()">
+	<div id="main">
+		<div class="head">
+			<div class="logo"><img src="./images/logo.png" alt="ipsan" /></div>
+			<div class="exit" onclick="logout()">
+				<span lang>Logout</span><img src="./images/logout.png"/>
+			</div>
+		</div>
+		<div class="hd">
+			<div class="welecome">
+				<div style="float:left;margin-right:10px;"><img src="./images/photo.png" alt="" /></div>
+				<p><span lang>Welcome</span><span id="hello"></span></p>
+				<p id="time"></p></br>
+			</div>
+				<div class="sidemen">
+					<h3 class="on border_left1"><em></em><span lang>System Setting</span></h3>
+					<ul>
+						<li>
+							<a href="system_info.html" target=aa><p lang>System Information</p></a>
+							<a href="system_time.html" target=aa><p lang>DateTime</p></a>
+						</li>
+					</ul>
+					<h3 class="border_left2"><em></em><a href="intert.html" target=aa style="color:white;display:block" lang>Network</a></h3>
+					<ul style="display:none"></ul>
+					<!-- <h3>网络设置</h3>
+					<ul>
+						<li>
+							<a href="intert.html" target=aa><p>网络设置</p></a>
+						</li>
+					</ul> -->
+					<h3 class="border_left3"><em></em><a href="users.html" target=aa style="color:white;display:block" lang>Account</a></h3>
+					<ul style="display:none"></ul>
+					<!-- <h3>账户设置</h3>
+					<ul>
+						<li>
+							<a href="users.html" target=aa><p>账户增删改</p></a>
+						</li>
+					</ul> -->
+					<h3 class="border_left4"><em></em><span lang>RAID</span></h3>
+					<ul>
+						<li>
+							<a href="disks.html" target=aa><p lang>Physical Disk</p></a>
+							<a href="raid_see.html" target=aa><p lang>View RAID</p></a>
+							<a href="raid_new.html" target=aa><p lang>Create RAID</p></a>
+						</li>
+					</ul>
+					<h3 class="border_left5"><em></em><span lang>Storage</span></h3>
+					<ul>
+						<li>
+							<a href="ivg.html" target=aa><p lang>Volume Group</p></a>
+							<a href="lvm.html" target=aa><p lang>Logical Volume</p></a>
+						</li>
+					</ul>
+					<h3 class="border_left6"><em></em><a href="san.html" target=aa style="color:white;display:block" lang>Target</a></h3>
+					<ul style="display:none"></ul>
+					<!-- <h3 class="border_left6"><em></em>Target管理</h3>
+					<ul>
+						<li>
+							<a href="san.html" target=aa><p>iscsi target管理</p></a>
+						</li>
+					</ul> -->
+					<h3 class="border_left7"><em></em><span lang>Maintenance</span></h3>
+					<ul>
+						<li>
+							<a href="event_updata.html" target=aa><p lang>Upgrade</p></a>
+							<a href="event_log.html" target=aa><p lang>Event</p></a>
+						</li>
+					</ul>
+				</div>
+			<script type="text/javascript">jQuery(".sidemen").slide({titCell:"h3",targetCell:"ul",trigger:"click"})</script>
+			<div id="language">
+        			<a href="#" id="zhBtn">简体中文</a>  
+				<a href="#" id="enBtn">English</a>  
+			</div>
+		</div>
+		<div class="bd">
+			<iframe width=100% height=600 frameborder=0 scrolling=auto name="aa" src="system_info.html"></iframe>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,99 @@
+﻿*{margin: 0; padding: 0;}
+body{overflow:-Scroll;overflow-x:hidden; font-family: "微软雅黑",sans-serif; margin:0 auto;padding:0;background: url(../images/bg.jpg) repeat;font-size:14px;color:#555;}
+body > div{margin-right:auto;margin-left:auto;}
+div,form,ul,ol,li,span,p{margin:0;padding:0;border:0;}
+img,a img{border:0;margin:0;padding:0;}
+h1,h2,h3,h4,h5,h6{margin:0;padding:0;font-size:14px;font-weight:normal;}
+ul,ol,li{list-style:none}
+table,td,input{font-size:14px}
+input, label, select, option, textarea, button, fieldset, legend { font-family:Tahoma,sans-serif;}
+a{outline-style:none;color:#333;text-decoration:none}
+a:hover{text-decoration:none;}
+
+#login{ margin-left: auto; margin-right: auto; width: 40%; height: 300px; text-align: center; margin-top: 200px;}
+.logo_text{ font-family: Arial, ans-serif; color: white; font-size: 22px; letter-spacing: 1px; margin-top: 10px;}
+#username,#password{ width: 250px; height: 45px; border-radius: 5px; border: 1px solid #888; background: url(../images/users.png) no-repeat center rgba(100,100,100,0.2); line-height: 45px; background-position: 10px; color: white; margin-top: 20px; padding-left: 30px;}
+#password{background: url(../images/password.png) no-repeat center rgba(100,100,100,0.2); background-position: 10px;}
+@media \0screen\,screen\9 {
+  #username{background: url(../images/users.png) no-repeat center; background-position: 10px;}
+  #password{background: url(../images/password.png) no-repeat center; background-position: 10px;}
+}
+#submit{ width: 280px; height: 45px; margin-top: 20px; border-radius: 5px; border: 1px solid #888; font-family: '微软雅黑'; font-weight: bold; color: white; background:-moz-linear-gradient(top, #fdad7c, #ff642c); 
+	background: -webkit-gradient(linear, left top, left bottom, from(#fdad7c), color-stop(0.5, #ff9150), to(#ff642c)); cursor: pointer;  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#fdad7c', endColorstr='#ff642c',GradientType=0 ); }
+#main{ width: 80%; height: auto; min-height: 600px; margin: 0 auto 0 auto; border-radius: 5px; }
+.head{ height: 30px; background: #292A2F;}
+.hd{ width: 20%; height: 100%; min-height: 600px; background: #F4F4F4; float: left; position: relative; background: #292a2f}
+.hd .sidemen{ color: white; clear: both;}
+.hd .sidemen h3{ height: 40px; line-height: 40px; font-size: 15px; border-bottom: 1px dashed #313131; background: url(../images/more_right.png) right no-repeat; margin-right: 10px; clear: both; cursor: pointer;}
+.hd .sidemen h3.on{ background: url(../images/more_bottom.png) right no-repeat;}
+.hd .sidemen h3.border_left1{ border-left: 2px solid #F79999;}
+.hd .sidemen h3.border_left1 em{display: inline-block; width: 35px; height: 40px; float: left; background: url(../images/system.png) no-repeat 10px center;}
+.hd .sidemen .border_left2,.border_left3,.border_left4,.border_left5,.border_left6,.border_left7
+{ border-left: 2px solid #292a2f;}
+.hd .sidemen h3.border_left2 em{ display: inline-block; width: 35px; height: 40px; float: left; background: url(../images/intert.png) no-repeat 10px center;}
+.hd .sidemen h3.border_left3 em{ display: inline-block; width: 35px; height: 40px; float: left; background: url(../images/userinfo.png) no-repeat 10px center;}
+.hd .sidemen h3.border_left4 em{ display: inline-block; width: 35px; height: 40px; float: left; background: url(../images/raid.png) no-repeat 10px center;}
+.hd .sidemen h3.border_left5 em{ display: inline-block; width: 35px; height: 40px; float: left; background: url(../images/storage.png) no-repeat 10px center;}
+.hd .sidemen h3.border_left6 em{ display: inline-block; width: 35px; height: 40px; float: left; background: url(../images/san.png) no-repeat 10px center;}
+.hd .sidemen h3.border_left7 em{ display: inline-block; width: 35px; height: 40px; float: left; background: url(../images/maintenance.png) no-repeat 10px center;}
+.hd .sidemen h3.border_left2:hover{border-left: 2px solid #C3F7A7;}
+.hd .sidemen h3.border_left3:hover{border-left: 2px solid #9FDDF6;}
+.hd .sidemen h3.border_left4:hover{border-left: 2px solid #F6F1A2;}
+.hd .sidemen h3.border_left5:hover{border-left: 2px solid #C1F8A9;}
+.hd .sidemen h3.border_left6:hover{border-left: 2px solid #9FDDF6;}
+.hd .sidemen h3.border_left7:hover{border-left: 2px solid #F5C294;}
+.hd .sidemen ul{ background: #3D3E43;}
+.hd .sidemen ul li{ padding-top: 1px; padding: 5px 0 5px 0;}
+.hd .sidemen ul li p{ line-height: 35px; height: 35px; color: white; text-indent:2em; cursor: pointer; border-left: 2px solid #3D3E43;}
+.hd .sidemen ul li p:hover{ border-left: 2px solid #76777C;}
+.bd{ width: 100%; height: 100%; min-height: 600px; float: right; background: url(../images/bg1.jpg);}
+
+/*公共样式*/
+[type=checkbox]{ margin-right: 5px;}
+table{ border:solid #ddd; border-width:1px 0px 0px 1px; width: 100%; margin-top: 20px; border-radius: 4px 4px 0 0; }
+tr.table_title{ border: 1px solid #ccc; background: #efefef; color: #626881; font-weight: bold;}
+tr{ background: transparent;}
+td{border:solid #ddd; border-width:0px 1px 1px 0px; padding: 10px 5px;}
+hr{ height:1px; border:none; border-top:1px solid #ccc;}
+.banner{ width: 95%; margin: 30px auto 0 auto;}
+.headtitle{ width: 150px; height: 40px; line-height: 40px; margin-left: auto; margin-right: auto; text-align: center; font-size: 18px; color: white; font-weight: bold; display: block;
+	background:-moz-linear-gradient(top, #cecece, #555); background: -webkit-gradient(linear, left top, left bottom, from(#cecece), color-stop(0.4, #cecece), to(#555));  filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='#cecece', endColorstr='#555',GradientType=0 );}
+.list{text-align: right; margin-bottom:10px;}
+#message{ width: 300px; height: auto; padding-left: 15px; padding-right: 15px; text-align: center; font-size: 16px;
+	text-shadow: 0px 1px 0px rgba(255, 255, 255, 0.5); position: fixed; line-height: 40px; display: none;
+	margin-left: auto; margin-right: auto; left:0; right:0; border-radius: 4px;}
+.prompt_err{ background: #F2DEDE; color: #B94A48; border: 1px solid #EED3D7;}
+.prompt_ok{ background: #DFF0D8; color: #468847; border: 1px solid #D6E9C6;}
+.prompt_war{ background: #FCF8E3; color: #C09853; border: 1px solid #FBEED5;}
+
+.submit,.add,.delete,.modify,.search{ padding: 5px 8px 5px 30px; box-shadow: 0px 1px 0px rgba(255, 255, 255, 0.2) inset, 0px 1px 2px rgba(0, 0, 0, 0.05); text-shadow: 0px -1px 0px rgba(0, 0, 0, 0.25);
+  color:white; font-size: 15px; cursor: pointer; text-align: center; border-radius: 2px;}
+.submit:hover,.add:hover,.delete:hover,.modify:hover,.search:hover,.input_updata:hover,.input_info:hover{filter:alpha(Opacity=60);-moz-opacity:0.6;opacity: 0.6}
+.submit{ background: url(../images/ok.png) no-repeat 5px center #7BD77B; margin-top: 20px; margin-left: 5px; border: 1px solid #6EC16E;}
+.add{ background: url(../images/add.png) no-repeat 5px center #2D9AF9; margin-left: 5px; border: 1px solid #288AE0;}
+.delete{ background: url(../images/delete.png) no-repeat 5px center #D84A38; margin-left: 5px; border: 1px solid #C44334;}
+.modify{ background: url(../images/modify.png) no-repeat 5px center #FFB848; margin-left: 5px; border: 1px solid #EDAA46;}
+.search{ background: url(../images/seach.png) no-repeat 5px center #57B5E3; border: 1px solid #52A5CE; margin-left: 0;}
+.input_text{ width: 180px; height: 30px; line-height: 30px; border: 1px solid #eee; color: #666; margin-left: 15px; padding-left: 8px;} 
+.input_select{ width: 190px; padding: 6px 0; border: 1px solid #eee; color: #666; margin: 0 5px 0 15px; padding-left: 8px;} 
+
+#poweroff,#reboot{ width: 64px; height: 64px; text-align: center; float: left; cursor: pointer;}
+#reboot{ margin-left: 70px;}
+.banner{margin-left:auto;margin-right:auto;}
+.new{ padding: 50px 0; width: 400px; border: 1px solid #eee; border-radius: 5px; background: url(../images/new_bg.png) repeat; text-align: center;
+	position: fixed; right: 0; left: 0; margin-left: auto; margin-right: auto; top:30%; color: white; display: none;}
+.new [type=text],[type=password],[type=number]{ color: white; background: transparent; border: 1px solid #f3f3f3; border-radius: 3px;}
+.close{ background: url(../images/new_close.png) no-repeat; width: 16px; height: 16px; position: absolute; top:5px; right: 5px; cursor: pointer;}
+#language{ position: absolute; bottom:5px; left:10px;}
+#language a{ color:#666; margin-left: 8px;}
+#language a:hover{color:#cd0000}
+
+[type=text]:focus,[type=password]:focus,[type=checkbox]:focus{ border-color: #75b9f0; box-shadow: 0px 1px 1px rgba(0, 0, 0, 0.075) inset, 0px 0px 8px rgba(82, 168, 236, 0.6);}
+textarea, input[type="text"], input[type="password"], input[type="datetime"], input[type="datetime-local"], input[type="date"], input[type="month"], 
+input[type="time"], input[type="week"], input[type="number"], input[type="email"], input[type="url"], input[type="search"], input[type="tel"], input[type="color"], 
+{  
+    -webkit-transition: border linear 0.2s, box-shadow linear 0.2s;
+    -moz-transition: border linear 0.2s, box-shadow linear 0.2s;
+    -o-transition: border linear 0.2s, box-shadow linear 0.2s;
+    transition: border 0.2s linear 0s, box-shadow 0.2s linear 0s;
+}

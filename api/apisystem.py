@@ -242,7 +242,7 @@ def api_diagnosis():
         filename: diagnosis file name.
 
     '''
-    r = subprocess.call(['./collect_diagnosis.sh'])
+    r = subprocess.call(['scripts/collect_diagnosis.sh'])
     if r == 0:
         logging.info("Collect diagnosis.")
 

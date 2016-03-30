@@ -4,19 +4,28 @@
 import os
 import time
 import logging
+import subprocess
 from upgrade import check_upgrade
+from network import check_network
 from tgtd import check_tgtd
 from lvm import check_lvm
+
 
 
 # class IPSanDaemon(Daemon): use supervisor instead
 class IPSanDaemon():
     def run(self):
         logging.info("Service ipsand started.")
+        # can not get network info imediately after reboot
+        # so, I put initial network script here
+        init_script = "scripts/init_network.sh"
+        if os.path.exists(init_script):
+            subprocess.call(init_script)
         while True:
             check_tgtd()
             check_lvm()
             check_upgrade()
+            check_network()
             time.sleep(5)
         logging.info("Service ipsand stopped.")
 
@@ -46,7 +55,7 @@ if __name__ == '__main__':
         os.mkdir(log_dir)
 
     logging.basicConfig(level=logging.INFO,
-                        filename=os.path.join(log_dir, "ipsand.log"),
+                        filename=os.path.join(log_dir, "daemon.log"),
                         format='%(asctime)s %(levelname)s:%(message)s')
 
     # start ipsand

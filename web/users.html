@@ -1,0 +1,192 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+    <link type="text/css" rel="stylesheet" href="css/showBo.css" />
+    <script type="text/javascript" src="js/showBo.js"></script>
+	<style>
+        #newpassword,#adduser{display: none;}
+    </style>
+    <script>
+        function add_user(){
+            $("#adduser").css("display","block");
+            $("#newpassword").css("display","none");
+        }
+
+        var user_row_template = '<tr><td><input type="checkbox" id="{0}" class="operation"></td><td>{1}</td><td>{2}</td></tr>';
+
+        function show_all_users(data){
+            for(var i=0;i<data.users.length;i++){
+                var time_at = data.users[i].created_at;
+                var username = data.users[i].name;
+        		var id = data.users[i].id;    
+                var date=Time(time_at);
+        		var user_row_html = String.format(user_row_template, id, username, date);
+        		$("#users").append(user_row_html);
+            }
+        }
+
+    	$(function query_all_user(){
+            var r = ajax_http("users","get","", show_all_users);
+            if(!r)
+            {
+                alert("Reqeust failure");
+            }
+            $(".close").click(function(){
+                $(".new").css("display","none");
+            });            
+    	});
+
+        function on_user_add(data){
+            if (data.retcode == 0) {
+                var username = data.user.name;
+                var date = data.user.created_at;
+                var id = data.user.id;
+                var user_row_html = String.format(user_row_template, data.user.id, data.user.name, Time(data.user.created_at));
+                $("#users").append(user_row_html);
+                $("#adduser").css("display","none");
+                alert_info("prompt_ok", __tr("Operation Success"));
+            }
+            else
+            {                        
+                alert_info("prompt_err",data.message);
+            }
+        }
+
+    	function commit_add(){
+            var user = $("#name").val();
+            var passwd = $("#password1").val();
+    		if(user.trim()==""){
+                alert_info("prompt_war", __tr("Input Username"));
+                $("#name").focus();
+                return false;
+            }
+            if(passwd.trim()==""){
+                alert_info("prompt_war", __tr("Input Password"));
+                $("#password1").focus();
+                return false;
+            }
+            var data = {
+                "name" : user,
+                "password" : passwd
+            };
+            var r = ajax_http("users","post",data, on_user_add);
+            if(!r)
+            {
+                alert("Reqeust failure");
+            }    	
+        }
+
+        function on_user_delete(data){
+            if(data.retcode == 0){
+                $("#"+data.id).parent().parent("tr").remove();
+                alert_info("prompt_ok", __tr("Operation Success")); 
+            }
+            else
+            {
+                alert_info("prompt_err",data.message);
+            }
+        }
+
+	   function delete_user(){
+ 	    var lang = getLanguage();
+            var ids = get_checked_ids();
+            if (ids.length == 0){
+                alert_info("prompt_war", __tr("No Account"));
+            }else{
+                Showbo.Msg.confirm(__tr("Confirm Delete"),function(flag)
+                {
+                    if(flag=='yes'){
+                        for(var i=0; i<ids.length; i++){
+                            var data = {
+                                "id" : ids[i]
+                            };
+                            var r = ajax_http("users/"+ids[i]+"/delete","post",data, on_user_delete); 
+                        }
+                    }
+                }, lang); 
+            }
+        }
+
+        $(document).on("change",".operation",function(){
+            $("#newpassword").css("display","none");
+        });
+
+	var current_user_id;
+        function update_user(){
+    	    var ids = get_checked_ids();
+    	    if (ids.length != 1){
+                alert_info("prompt_war", __tr("No Account"));
+                return;
+    	    }
+    	    current_user_id = ids[0];
+            $("#adduser").css("display","none");
+            $("#newpassword").css("display","block");     
+        }
+
+        function on_user_update(data){
+            if(data.retcode==0){
+                alert_info("prompt_ok", __tr("Operation Success"));
+                $("#newpassword").css("display","none");
+            }
+            else
+            {
+                alert_info("prompt_err",data.message);
+            }
+        }
+
+   	function commit_update(){
+    		new_password=$("#newmima").val();
+            if(new_password.trim()==""){
+               	alert_info("prompt_war", __tr("Input Password"));
+                return false;
+            }
+            var data = {
+                "id" : current_user_id,
+                "password" : new_password
+            };
+            var r = ajax_http("users/"+current_user_id, "post", data, on_user_update);
+            if(!r)
+            {
+                alert("Reqeust failure");
+            }           
+        }
+	</script>
+</head>
+<body onload="readcookie()">
+	<div class="bd">
+		<p class="headtitle" lang>Account</p>
+		<div class="banner">
+            <p id="message" class="prompt"></p>
+            <div class="list">
+                <button onclick="add_user()" class="add" lang>Add</button>
+                <button onclick="delete_user()" class="delete" lang>Delete</button>
+                <button onclick="update_user()" class="modify" lang>Modify</button>
+            </div>
+            <hr />
+			<table id="users" border="0" cellspacing="0" cellpadding="0">
+				<tr class="table_title">
+                    <td></td>
+					<td lang>Username</td>
+					<td lang>Created</td>
+				</tr>
+			</table>			
+			<div id="newpassword" class="new">
+                <div class="close"></div>
+				<p><span lang>New Password</span><input type="password" id="newmima" class="input_text" /></p><br />
+				<p><button onclick="commit_update()" class="submit" lang>Save</button></p>
+			</div>
+			<div id="adduser" class="new">
+                <div class="close"></div>
+				<p><span lang>Username</span><input type="text" id="name" class="input_text" /></p><br />
+				<p><span lang>Password</span><input type="password" id="password1" class="input_text" /></p><br />
+				<button onclick="commit_add()" class="submit" lang>Save</button>
+			</div>
+		</div>					
+	</div>
+</body>
+</html>

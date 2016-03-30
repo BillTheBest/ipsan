@@ -19,7 +19,7 @@ def api_events(request, **kw):
 
         type: event sub type below category. 1=OS, 2=upgrade, 3=user, 4=array, 5=volume group, 6=lvm, 7=target
 
-        action: event action. 1=add, 2=delete, 3=modify, 4=view, 5=login, 6=logout, 7=reboot, 8=poweroff, 9=network
+        action: event action. 1=add, 2=delete, 3=modify, 4=view, 5=login, 6=logout, 7=reboot, 8=poweroff, 9=network, 10=upgrade
 
         begin: event begin time(UTC) such as 1439449427
 

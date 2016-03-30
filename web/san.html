@@ -1,0 +1,321 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+    <link type="text/css" rel="stylesheet" href="css/showBo.css" />
+    <script type="text/javascript" src="js/showBo.js"></script>
+	<style>
+		.target{ background: #f9f9f9; float: left; margin: 20px 40px 0 40px; }
+		.title_top{ background: #EFEFEF; border-radius: 3px 3px 0 0; height: 32px; border: 1px solid #DDD; border-bottom: none; padding-top: 10px;}
+		.target_table{ border: 1px solid #ccc; border-top: none; border-radius: 0 0 3px 3px; margin-top: 0;}
+		.icon_name{ float: left; }
+		.target_icon{ float: left; margin-left: 10px;}
+		.target_name{ float: left; margin-left: 10px; font-size: 18px; color: #62687E;}
+		.dele{ float: right; margin-right: 10px; padding-top: 3px; cursor: pointer;}
+		.none_id{display: none;}
+		.target_table p{ padding: 5px 5px;}
+		.title_head{ width: 60px; text-align: right; display: inline-block; margin-bottom: 20px;}
+		.more{ float: right; margin-right: 10px; padding-top: 3px; cursor: pointer;}
+		label{font-size:12px; font-family:Tahoma; width: 60px; display: inline-table; padding-left: 3px; }
+		.tab{ border: none; margin-top: 0px; }
+		.tab tr td{ border: none; padding: 5px 5px;}
+		.tab tr td:nth-child(1){ text-align: right;}
+		.tab tr td:nth-child(2){ text-align: left;}
+		.tab tr:nth-child(2) td:nth-child(2){ padding-left: 20px;}
+		.tab tr:nth-child(3) td:nth-child(2){ padding-left: 15px;}
+		.input_select{ margin-left: 5px; background: transparent;}
+		#number{ width: 180px; height: 30px; line-height: 30px; border: 1px solid #eee; padding-left: 8px;}
+		[type=checkbox]{ margin: 0 0 5px 5px;}
+		.new{top:100px;}
+	</style>
+	<script>
+	    var num;
+	    var target_row_template = '<div class="target" id="remove{0}"><div class="title_top"><div class="icon_name"><p class="target_icon"><img src="./images/array.png"/></p><p class="target_name">{1}</p></div><div id="more{0}" class="more"><img src="./images/zhankai.png"/></div><div class="dele" id="{0}"><img src="./images/del.png"/></div></div><div class="target_table"><p>IQN：<span>{2}</span></p><p>{3}：<span>{4}</span></p><p>{5}：<span>{6}</span></p><div id="luns{0}"></div><div id="sessionsmore{0}"></div></div></div>';
+	    var target_row_template_lun = '<div><p>{0}：<span>{1}</span></p></div><div><p>{2}：<span>{3}</span></p></div><div><p>{4}：<span>{5}</span></p></div><div><p>{6}：<span>{7}</span></p></div>';
+	    var target_row_template_sessions = '<div><p>{0}{1}：<span>{2}</span></p><p>{3}：<span>{4}</span></p></div>';
+	    function output(data){
+			$("#targets").html(""); 
+	    	for(i=0;i<data.targets.length;i++){
+                var state_arr = [dict["Unknow"], dict["Ready"], dict["Idle"]];
+                var state = state_arr[data.targets[i].state]; 
+                var target_row_html = String.format(target_row_template, data.targets[i].id, data.targets[i].name, data.targets[i].iqn, dict["State"], state, dict["TargetID"], data.targets[i].tid);
+                $("#targets").append(target_row_html);
+                for(j=0;j<data.targets[i].luns.length;j++){
+                	var size = data.targets[i].luns[j].size;			
+                	var sizenum = human_size(size,kb=true);
+                	var state_arr1 = [dict["Unknow"], dict["Actived"], dict["Idle"]];
+                	var state1 = state_arr1[data.targets[i].luns[j].state];
+                	var luns = "#luns"+data.targets[i].id;
+                	var target_row_html_lun = String.format(target_row_template_lun, dict["LUN Name"], data.targets[i].luns[j].name, dict["LUN Type"], data.targets[i].luns[j].type, dict["LUN State"], state1, dict["LUN Size"], sizenum);
+                	$(luns).append(target_row_html_lun);
+				}
+				if (data.targets[i].sessions) {
+            		for(k=0;k<data.targets[i].sessions.length;k++){
+						var sessions = "#sessionsmore"+data.targets[i].id;
+						var target_row_html_sessions = String.format(target_row_template_sessions, dict["Client"], data.targets[i].sessions[k].sid, data.targets[i].sessions[k].initiator, dict["Client IP"], data.targets[i].sessions[k].connections);
+						$(sessions).prepend(target_row_html_sessions);
+						$(sessions).css("display","none");
+					}
+            	}
+			}			
+	    }
+
+	    $(document).ready(function(){
+	    	ajax_http("targets","get","",output);
+	    	luojidanyuan();
+			$("#targets").on("click",".more",function(){
+    			var tog = "#sessions"+this.id
+    			$(tog).toggle();
+  			});
+  			$('#targets').trigger('click');
+		});
+
+	    function output_checkbox(data){
+	    	$("#lun").html("");
+	    	for(i=0;i<data.lvms.length;i++){
+				$("#lun").html("<p><input type=\"checkbox\" id=\"lun"+i+"\" value=\""+data.lvms[i].path+"\" /><label>"+data.lvms[i].name+"</label></p>");
+			}
+			num=i;
+	    }
+
+		function luojidanyuan(){			
+			if($("#target_type").val()=="2"){
+					ajax_http("sysinfo","get","",output_info);
+					ajax_http("disks","get","",output_disk);
+				}
+				if($("#target_type").val()=="1"){
+					ajax_http("lvms","get","",output_checkbox);
+				}
+            $(".close").click(function(){
+                $(".new").css("display","none");
+            });
+		}
+
+		$(function(){
+			$("#target_type").change(function() {
+				if($("#target_type").val()=="2"){
+					ajax_http("sysinfo","get","",output_info);
+					ajax_http("disks","get","",output_disk);
+				}
+				if($("#target_type").val()=="1"){
+					ajax_http("lvms","get","",output_checkbox);
+				}
+			});
+		});
+
+		var disks_num;
+		var val;
+		function change_panel()
+		{
+			var panel_col_array = [0, 3, 2, 2, 4, 3, 3, 4, 4, 4, 4, 4];
+			var panel_row_array = [0, 2, 3, 4, 2, 3, 3, 4, 4, 3, 6, 1];
+			var row = panel_row_array[val];
+			var col = panel_col_array[val];
+			
+			var disks = "";
+			var m=0;
+			var disk_text;
+			for (var k = 0; k<row; ++k)
+			{
+				for (var j = 0; j<col; ++j)
+				{
+					disks += "<input type=\"checkbox\" id=\"disk"+m+"\"><label id=\"disk_text"+m+"\" /></label>";
+					m=m+1;
+				}
+				disks += "</br>";
+			}
+			$("#lun").html("");
+			$("#lun").html(disks);
+			disks_num = m;
+		}
+
+		function output_info(data){
+			val = data.sysinfo.panel;
+			if(val == 4||val>6){
+				$(".new").css("width","500px");
+			}
+			change_panel();			
+		}
+
+		function output_disk(data){	
+			for(var i=0;i<data.disks.length;i++)
+			{
+				var disknn="disk"+data.disks[i].slot;
+				var disknn_text="disk_text"+data.disks[i].slot;
+				document.getElementById(disknn).value=data.disks[i].device;
+				var num = data.disks[i].name;	
+				var name_l = num.substr(0,2)+"-";
+				var start = num.length-4;
+				var name = name_l+num.substr(start,4);
+				$("#"+disknn_text).html(name);
+				if(data.disks[i].used_by!=""){
+					$("#"+disknn).attr("disabled","disabled");
+					$("#"+disknn_text).css("color","#aaa");					
+				}
+				else{
+					$("#"+disknn).attr('class',"sss"); 
+					$("#"+disknn).removeAttr("disabled"); 
+					$("#"+disknn_text).css("color","#555");
+				}
+
+			}
+			null_disk();	
+		}
+
+		function null_disk(){
+			for(j=0;j<disks_num;j++){
+				var jq_disknn_text=document.getElementById('disk_text'+j).innerHTML;
+				if(jq_disknn_text==""){
+					$("#disk"+j).attr("disabled","disabled");
+				}				
+			}
+		}
+
+		var paremestor;
+		function san_array(){
+			var j=0;
+			var array = [];
+			if($("#target_type").val()=="2"){
+				for(var i=0;i<disks_num;i++){
+					var diskn = "disk"+i;			
+					if(document.getElementById(diskn).checked){					
+						array[j] =document.getElementById(diskn).value;
+						j=j+1;
+					}								
+				}
+			}
+			if($("#target_type").val()=="1"){
+				for(var i=0;i<num;i++){
+					var lunn = "lun"+i;				
+					if(document.getElementById(lunn).checked){			
+						array[j] = document.getElementById(lunn).value;
+						j=j+1;
+					}						
+				}
+			}				
+			paremestor = JSON.stringify(array);
+		}
+
+		function output_updata(data){
+			if (data.retcode == "0") {               
+                ajax_http("targets","get","",output);
+                $("#san_tianjia").css("display","none");
+                alert_info("prompt_ok","创建成功！");
+            }
+            else
+            {
+                alert_info("prompt_err",data.message);
+            }
+		}
+
+		function san_create(){
+			san_array();
+			var type = $("#target_type").val();
+			var name = document.getElementById('name').value;
+			var number = $("#number").val();
+			if(name.trim()==""){
+                alert_info("prompt_war", __tr("No Target Name"));
+                return false;
+            }
+			var data = {
+				"name" :name,
+            	"lun" : paremestor,
+            	"type" : type,
+            	"tid" :　number
+			};
+			var r = ajax_http("targets","post",data,output_updata);
+            if(!r)
+            {
+                alert("Reqeust failure");
+            }      	
+		}
+		
+		function san_create_show(){
+			$("#san_tianjia").css("display","block");
+			luojidanyuan();
+		}
+
+		function output_delete(data){
+            if(data.retcode==0){
+                alert_info("prompt_ok", __tr("Operation Success"));
+            	  $("#remove"+data.id).remove();            
+            }
+            else
+            {                        
+                if(newname.trim()==""){
+                alert_info("prompt_err",data.message);
+                return false;
+            }
+            }
+		}
+
+		$(document).click(function(e){ 
+			e = window.event || e; // 兼容IE7
+			obj = $(e.srcElement || e.target);
+			$("#targets").on("click",".dele",function() {
+				var id = this.id;
+				var lang = getLanguage();
+				Showbo.Msg.confirm(__tr("Delete Target"), function(flag){        	
+	                if(flag=='yes'){                    
+	            		var data = {
+							"id" : id
+						};
+						var r = ajax_http("targets/"+id+"/delete","post",data,output_delete);
+					}
+	                else if(flag=='no'){
+	                    return false;
+	                }
+            	}, lang);
+			});
+		});		   	
+	</script>
+</head>
+<body onload="readcookie()">
+	<div class="bd">
+		<p class="headtitle" lang>Target</p>
+		<div class="banner">
+			<p id="message" class="prompt"></p>
+			<div class="list">
+				<button onclick="san_create_show()" class="add" lang>Add</button>
+			</div>
+			<hr />
+			<div id="targets"></div>									
+			<div id="san_tianjia" class="new">
+				<div class="close"></div>
+				<table class="tab">
+					<tr>
+						<td lang>Target Name</td>
+						<td><input type="text" id="name" class="input_text" placeholder="" /></td>
+					</tr>
+					<tr>
+						<td lang>TargetID</td>
+						<td style="padding-bottom:0px;"><input type="number" id="number" placeholder="Target Global ID" min="1" max ="1000" step="1" value="1" />
+						<br /><p style=" color: #cd0000;font-size:12px;"><span lang>Target GUID</span></p></td>
+
+					</tr>
+
+					<tr>
+						<td lang>LUN Type</td>
+						<td>
+							<select id="target_type" class="input_select">
+								<option value="1" lang>LV</option>
+								<option value="2" lang>Disk</option>
+							</select>
+						</td>
+					</tr>
+					<tr>
+						<td lang>LUN</td>
+						<td id="lun"></td>
+					</tr>
+				</table>			
+				<button onclick="san_create()" class="submit" lang>Save</button>
+			</div>			
+		</div>
+	</div>
+</body>
+</html>

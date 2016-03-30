@@ -1,0 +1,251 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+	<style>
+		[type=checkbox]{ margin: 5px 0 0 10px; overflow: hidden;}
+		label{font-size:12px; font-family:Tahoma; width: 80px; display: inline-table; padding-left: 3px; }
+		.title{ width: 80px; display: inline-block; margin-bottom: 20px;}
+		#array{ margin-top: 30px;}
+		#arrays,#disks{ font-weight: bold; }
+		h3{ margin-bottom: -10px; margin-top: 10px; width: 80px;}
+		#disk,#spare{  margin-left: 1px; padding-top: 5px;}
+	</style>
+	<script>
+		var disks_num;
+		var val;
+		function change_panel()
+		{
+			var panel_col_array = [0, 3, 2, 2, 4, 3, 3, 4, 4, 4, 4, 4];
+			var panel_row_array = [0, 2, 3, 4, 2, 3, 3, 4, 4, 3, 6, 1];
+			var row = panel_row_array[val];
+			var col = panel_col_array[val];
+			
+			var disks = "";
+			var spares = "";
+			var m=0;
+			var disk_text;
+			var spare_text;
+			for (var k = 0; k<row; ++k)
+			{
+				disks += "</br>";
+				spares += "</br>";
+				for (var j = 0; j<col; ++j)
+				{
+					disks += "<input type=\"checkbox\" id=\"disk"+m+"\" onclick=\"disable()\"><label id=\"disk_text"+m+"\" /></label>";
+					spares += "<input type=\"checkbox\" id=\"spare"+m+"\" onchange=\"disable()\"><label id=\"spare_text"+m+"\" /></label>";
+					m=m+1;
+				}
+			}
+			$("#disk").html(disks);
+			$("#spare").html(spares);
+			disks_num = m;
+		}
+
+		function output_info(data){
+			val = data.sysinfo.panel;
+			change_panel();			
+		}
+
+		function output_disk(data){	
+			for(var i=0;i<data.disks.length;i++)
+			{
+				var disknn="disk"+data.disks[i].slot;
+				var disknn_text="disk_text"+data.disks[i].slot;
+				var sparenn="spare"+data.disks[i].slot;
+				var sparenn_text="spare_text"+data.disks[i].slot;
+				document.getElementById(disknn).value=data.disks[i].device;
+				document.getElementById(sparenn).value=data.disks[i].device;
+				var num = data.disks[i].name;	
+				var name_l = num.substr(0,2)+"-";
+				var start = num.length-4;
+				var name = name_l+num.substr(start,4);
+				document.getElementById(disknn_text).innerHTML=name;
+				document.getElementById(sparenn_text).innerHTML=name;
+				if(data.disks[i].used_by!=""){
+					$("#"+disknn).attr("disabled","disabled");
+					$("#"+sparenn).attr("disabled","disabled");
+					$("#"+disknn_text).css("color","#ccc");
+					$("#"+sparenn_text).css("color","#ccc");					
+				}
+				else{
+					$("#"+disknn).attr('class',"sss"); 
+					$("#"+sparenn).attr('class',"sss"); 
+					$("#"+disknn).removeAttr("disabled"); 
+					$("#"+sparenn).removeAttr("disabled"); 
+					$("#"+disknn_text).css("color","#555");
+					$("#"+sparenn_text).css("color","#555");
+				}
+
+			}
+			null_disk();	
+		}
+
+		function null_disk(){
+			for(j=0;j<disks_num;j++){
+				var jq_disknn_text=document.getElementById('disk_text'+j).innerHTML;
+				var jq_sparenn_text=document.getElementById('spare_text'+j).innerHTML;
+				if(jq_disknn_text=="" || jq_sparenn_text==""){
+					$("#disk"+j).attr("disabled","disabled");
+					$("#spare"+j).attr("disabled","disabled");
+				}				
+			}
+		}
+
+		function disable(){
+			var check = [];
+			var j=0;
+			for(i=0;i<disks_num;i++){
+        		var disknn = "#disk"+i;
+        		var disknn_text = "disk_text"+i
+        		if($(disknn).hasClass("sss")){
+            		check[j]=i;
+            		j=j+1;
+            	}
+            	
+    		}		
+			for(var i=0;i<check.length;i++){			
+				if($("#disk"+check[i]).is(":checked")==true){
+					$("#spare"+check[i]).attr("disabled","disabled");
+					$("#spare_text"+check[i]).css("color","#ccc");
+				}
+				if($("#disk"+check[i]).is(":checked")==false){
+					$("#spare"+check[i]).removeAttr("disabled");
+					$("#spare_text"+check[i]).css("color","#555"); 
+				}
+				if($("#spare"+check[i]).is(":checked")==true){	
+					$("#disk"+check[i]).attr("disabled","disabled");
+					$("#disk_text"+check[i]).css("color","#ccc");
+				}
+				if($("#spare"+check[i]).is(":checked")==false){
+					$("#disk"+check[i]).removeAttr("disabled"); 
+					$("#disk_text"+check[i]).css("color","#555");
+				}								
+			}
+		}
+
+		$(document).ready(function arrays(){
+			var e = ajax_http("sysinfo","get","",output_info);
+			var r = ajax_http("disks","get","",output_disk);
+            if(!r || !e)
+            {
+                alert("Reqeust failure");
+            }   	
+		});
+
+		var paremestor_disk;
+		function disk_array(){
+			var j=0;
+			var disk_array = [];
+			for(var i=0;i<disks_num;i++){
+				var diskn = "disk"+i;			
+				if(document.getElementById(diskn).checked){					
+					disk_array[j] =document.getElementById(diskn).value;
+					j=j+1;
+				}								
+			}
+			paremestor_disk = JSON.stringify(disk_array);
+		}
+
+		var paremestor_spare;
+		function spare_array(){
+			var j=0;
+			var spare_array = [];
+			for(var i=0;i<disks_num;i++){
+				var sparen = "spare"+i;				
+				if(document.getElementById(sparen).checked){					
+					spare_array[j] = document.getElementById(sparen).value;
+					j=j+1;
+				}								
+			}
+			paremestor_spare = JSON.stringify(spare_array);
+		}
+
+		function output_updata(data){
+			if (data.retcode == "0") {
+                alert_info("prompt_ok", __tr("Operation Success"));
+                window.location.href="raid_see.html";
+            }
+            else
+            {
+               	alert_info("prompt_err",data.message);
+            }
+		}
+
+		function raid_updata(){
+			disk_array();
+			spare_array();
+			var name = $("#name").val();
+			var level = $("#level").val();
+			var chunk = $("#chunk").val();
+			if(name.trim()==""){
+                alert_info("prompt_war", __tr("No RAID Name"));
+                return false;
+            }
+            if(level.trim()==""){
+                alert_info("prompt_war", __tr("No RAID Level"));
+                return false;
+            }
+            if(chunk.trim()==""){
+                alert_info("prompt_war", __tr("No RAID Chunk"));
+                return false;
+            }
+			var data = {
+				"name" : name,
+				"level" : level,
+				"chunk" : chunk,
+				"disk" : paremestor_disk,
+				"spare" : paremestor_spare
+			};
+			var r = ajax_http("arrays","post",data,output_updata);
+            if(!r)
+            {
+                alert("Reqeust failure");
+            }
+        }
+
+
+	</script>
+</head>
+<body onload="readcookie()">
+	<div class="bd">
+		<p class="headtitle" lang>Create RAID</p>
+		<div class="banner">
+			<p id="message" class="prompt"></p>
+			<hr />			
+			<div id="array">
+			<p><span class="title" lang>Raid Name</span><input type="text" placeholder="Number, letters" id="name" name="name" class="input_text" /></p>
+			<p><span class="title" lang>Raid Level</span><select name="level" id="level" name="level" class="input_select">
+				<option value="0">0</option>
+				<option value="1">1</option>
+				<option value="5" selected="selected">5</option>
+				<option value="6">6</option>
+				<option value="10">10</option>
+			</select></p>
+			<p><span class="title" lang>Chunk</span><select name="chunk" id="chunk" name="chunk" class="input_select">
+					<option value="64">64K</option>
+					<option value="128">128K</option>
+					<option value="256">256K</option>
+					<option value="512" selected="selected">512K</option>
+				</select>
+			</p>
+				<h3 lang>Data Disk</h3>
+				<p id="disk">
+
+				</p>
+				<h3 lang>Spare Disk</h3>
+				<p id="spare">
+					
+				</p>
+				<p style="clear:both"><input type="button" onclick="raid_updata()" value="Save" class="submit" lang /></p>
+			</div>
+	<div id="panel_div">
+	</div>
+		</div>
+	</div>
+</body>
+</html>

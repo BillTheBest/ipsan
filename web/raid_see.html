@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+    <link type="text/css" rel="stylesheet" href="css/showBo.css" />
+    <script type="text/javascript" src="js/showBo.js"></script>
+	<style>
+		.raid{ background: #f9f9f9; float: left; margin: 20px 40px 0 40px;}
+		.title_head{ background: #EFEFEF; border-radius: 3px 3px 0 0; height: 32px; border: 1px solid #DDD; border-bottom: none; padding-top: 10px;}
+		.raid_table{ border: 1px solid #ccc; border-top: none; border-radius: 0 0 3px 3px; margin-top: 0;}
+		.raid_table p{ padding: 5px 5px;}
+		.raid_table p:nth-child(odd){ background: white;}
+		.raid_table p span{ margin: 0 25px 0 0; }
+		.icon_name{ float: left;}
+		.array_icon{ float: left; margin-left: 10px;}
+		.array_name{ float: left; margin-left: 10px; font-size: 18px; color: #62687E;}
+		.dele{ float: right; margin-right: 10px; padding-top: 3px; cursor: pointer;}
+		.more{ float: right; margin-right: 10px; padding-top: 3px; cursor: pointer;}
+		.none_id{display: none;}
+		.span_title{width: 100px}
+	</style>
+	<script>
+		var num;
+		var raid_row_template = '<div class="raid" id="remove{0}"><div class="title_head"><div class="icon_name"><p class="array_icon"><img src="./images/array.png"/></p><p class="array_name">{1}</p></div><div id="more{0}" class="more"><img src="./images/zhankai.png"/></div><div class="dele" id="{0}"><img src="./images/del.png"/></div></div><div class="raid_table"><p>{2}：<span>{3}</p><p></span>{4}：<span>{5}</span></p><p>{6}：<span>{7}</p><p></span>{8}：<span>{9}</span></p><p>{10}：<span>{11}</span></p><p>{12}：<span>{13}</span></p><p>{14}：<span>{15}</span></p><p>{16}：<span>{17}</span></p><div id="diskmore{0}"></div></div></div>';
+		var raid_row_template_disk = "<p>{0}：<span>{1} [{2}]</span></p>";
+		function output_array(data){
+			for(var i=0;i<data.arrays.length;i++){
+                var size = data.arrays[i].capacity;						
+                var sizenum = human_size(size, kb=true);
+                var time_at = data.arrays[i].created_at;
+                var date=Time(time_at);
+                var chunk_size;
+                if(typeof(data.arrays[i].chunk_size)=="undefined"){
+                	chunk_size = "         ";
+                }else
+                {
+                	chunk_size = data.arrays[i].chunk_size+"K";
+                }
+
+                var raid_row_html = String.format(raid_row_template, data.arrays[i].id, data.arrays[i].name, dict["Level"], data.arrays[i].level, dict["State"], data.arrays[i].state, dict["Chunk"], chunk_size, dict["Capacity"], sizenum, dict["Data Disk"], data.arrays[i].raid_devices, dict["Spare Disk"], data.arrays[i].spare_devices, dict["Fail Disk"], data.arrays[i].failed_devices, dict["Created"], date);
+				$("#raid").append(raid_row_html); 
+				for(j=0;j<data.arrays[i].disks.length;j++){
+					var disks = "#diskmore"+data.arrays[i].id;
+					var raid_row_html_disk = String.format(raid_row_template_disk, dict["Device"], data.arrays[i].disks[j].device, data.arrays[i].disks[j].state);
+					$(disks).append(raid_row_html_disk);
+					$(disks).css("display","none");
+				}				
+           	}
+           	num=i;
+		}
+
+		$(document).ready(function(){
+			$("#raid").on("click",".more",function(){
+				var tog = "#disk"+this.id;
+    			$(tog).toggle();
+  			});
+  			$('#raid').trigger('click');
+		});
+
+		$(document).ready(function (){
+			var e = ajax_http("arrays","get","",output_array);
+            if(!e)
+            {
+                alert("Reqeust failure");
+            }      	
+		});		
+
+		function output_delete(data){
+			if (data.retcode == "0") {
+                $("#remove"+data.id).remove();
+                alert_info("prompt_ok", __tr("Operation Success"));
+            }
+            else
+            {                        
+                alert_info("prompt_err",data.message);
+            }
+		}
+		
+		$(function(e){
+			e = window.event || e; // 兼容IE7
+			obj = $(e.srcElement || e.target);
+			$("#raid").on("click",".dele",function() {
+				var id = this.id;
+ 	    			var lang = getLanguage();
+	            Showbo.Msg.confirm(__tr("Delete RAID"),function(flag){        	 	
+	            	if(flag=='yes'){
+	                    var data = {
+	                        "id" : id
+	                    };		
+						var r = ajax_http("arrays/"+id+"/delete","post",data,output_delete);
+					}
+	                else if(flag=='no')
+	                {
+	                    return false;
+	                }
+	        	}, lang);	
+			});			
+		});
+			
+		
+	</script>
+</head>
+<body onload="readcookie()">
+	<div class="bd">
+		<p class="headtitle" lang>View RAID</p>
+		<div class="banner" >
+			<p id="message" class="prompt"></p>
+			<hr />
+			<div id="raid">
+				
+			</div>			
+		</div>
+	</div>
+</body>
+</html>

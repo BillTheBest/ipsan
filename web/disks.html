@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+	<script>
+		function output(data){
+			for(var i=0;i<data.disks.length;i++){
+                var size = data.disks[i].capacity;
+                var sizenum = human_size(size, kb=false);
+                var state_arr = [ dict["Normal"], dict["Abnormal"]];
+                var state = state_arr[data.disks[i].state]; 
+		if (data.disks[i].state == 1) {
+		    state = "<span style='color:red'>" + state + "</span>";
+		}
+                $("#disks").append("<tr><td>"+data.disks[i].slot+"</td><td>"+data.disks[i].name+"</td><td>" + data.disks[i].device +"</td><td>"+state+"</td><td>"+sizenum+"</td></tr>");
+			}
+		}
+
+		function disks(){
+            var r = ajax_http("disks","get","",output);
+            if(!r)
+            {
+                alert("Reqeust failure");
+            }
+    	}
+	</script>
+</head>
+<body onload="readcookie(),disks()">
+	<div class="bd">
+		<p class="headtitle" lang>Physical Disk</p>
+		<br />
+		<br />
+		<div class="banner" >
+			<hr />
+			<table id="disks" border="0" cellspacing="0" cellpadding="0">
+				<tr class="table_title">
+					<td lang>Slot</td>
+					<td lang>Name</td>
+					<td lang>Device</td>
+					<td lang>State</td>
+					<td lang>Capacity</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title>IPSAN</title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+    <script type="text/javascript" src="js/js.js"></script>
+	<style>
+		body{ background: url(images/bg.jpg);}
+        #tip1,#tip2{ position: fixed; color: #cd0000; left: 40%;}
+        a{ color: #FFA500;}
+	</style>
+    <script type="text/javascript">
+        $(function (){
+            $("#username").focus();
+        });
+
+        function valid_input(user, passwd){
+            var usern = /^[a-zA-Z0-9_]{1,}$/; 
+            if (user == "") {
+                document.getElementById('tip1').innerHTML=__tr("Input Username");
+                $("#username").focus();
+                return false;
+            }
+            /*if (!usern.test(user)) {
+               $("#username").focus();
+                return false;
+            }*/
+            if (passwd == "") {
+                document.getElementById('tip2').innerHTML=__tr("Input Password");
+                $("#password").focus();
+                return false;
+            }
+            return true;
+        }
+
+        function checkCookie(){
+            var username=getCookie('username');
+            if (username!=null && username!="")
+            {
+                window.location.href="iframe.html";
+            }
+            else 
+            {
+                return false;
+            }
+        }
+        function output(data){
+            if (data.retcode==0){
+                var user = $("#username").val();
+                document.cookie="username="+user;
+                window.parent.location.href="iframe.html";  
+            }
+            else
+            {
+		$("#tip2").text(data.message);
+            }
+        }
+
+        function do_login(){
+            var user = $("#username").val();
+            var passwd = $("#password").val();
+            if (!valid_input(user, passwd)){
+                return;
+            }
+            var data = {
+                "user": user,
+                "password": passwd
+            };
+            var r = ajax_http("login", "post", data, output);    
+            if (!r){
+               alert("Reqeust failure");    
+            }
+        }
+
+        function hotkey(){
+            if(navigator.appName == "Microsoft Internet Explorer"){
+                var keycode = event.keyCode;  　　      　　   
+            }
+            else{
+                    var keycode =  hotkey.caller.arguments[0].which;　     　　
+                }
+            if(keycode==13){
+                do_login();
+            }
+        }
+	    function onload(){
+			checkCookie();
+            $("#username").focus();
+		}
+    </script>
+</head>
+<body onload="onload()">
+	<div id="login">
+		<p><img src="images/user.png"/></p>
+		<p class="logo_text" lang>IPSAN</p>
+		<p><input type="text" id="username"  placeholder="User name" /></p>
+        <p id="tip1"></p>
+		<p><input type="password" id="password" onkeyup="hotkey()"/></p>
+        <p id="tip2"></p>
+		<p><input type="submit" id="submit" onclick="do_login()" value="Login" lang/></p>        
+	</div>
+    <div style="color:#efefef;font-size:12px;text-align:center;margin-top:80px;"><span lang>Recommend</span><a href="http://www.firefox.com.cn/">&nbsp;Firfox</a>、<a href="http://www.google.cn/intl/zh-CN/chrome/browser/">Chrome&nbsp;</a><span lang>Browser</span></div>
+</body>
+</html>

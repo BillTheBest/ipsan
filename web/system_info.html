@@ -1,0 +1,52 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title>IPSAN</title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+	<style>
+		.system_info{ width: 300px; margin: 30px auto 0 auto; font-size: 16px;}
+		.system_head{ background: #efefef; border: 1px solid #ddd; height: 35px; border-radius: 3px 3px 0 0;}
+		.system_head p{ padding: 7px 0 0 7px; color: #666;}
+		.system_banner{ background: white; border: 1px solid #ccc; border-top: none; padding: 10px 0 5px 0; border-radius: 0 0 3px 3px;}
+		.system_info p{ padding-bottom: 10px;}
+		.system_info p .text{ display: inline-table; text-align: right; width: 70px; margin-left: 10px; color: #62687E; font-weight: bold;}
+	</style>
+	<script>
+		
+		function output(data){
+			$("#version").text(data.sysinfo.version);
+			$("#vendor").text(data.sysinfo.vendor);
+			$("#SN").text(data.sysinfo.SN);
+			$("#model").text(data.sysinfo.model);
+		}
+		function sysinfo(){
+			var r = ajax_http("sysinfo","get","",output);
+			if(!r){
+				alert("Reqeust failure");
+			}
+		}
+	</script>
+</head>
+<body onload="readcookie(),sysinfo()">
+	<div class="bd">
+		<p class="headtitle" lang>System Information</p>
+		<div class="banner">
+			<div class="system_info">
+				<div class="system_head">
+					<p><img src="./images/system_head.png" alt="" />&nbsp;IPSAN</p>
+				</div>
+				<div class="system_banner">
+					<p><span class="text" lang>Version</span><span id="version"></span></p>
+					<p><span class="text" lang>Model</span><span id="model"></span></p>
+					<p><span class="text" lang>SN</span><span id="SN"></span></p>
+					<p><span class="text" lang>Vendor</span><span id="vendor"></span></p>
+				</div>				
+			</div>
+		</div>			
+	</div>
+</body>
+</html>

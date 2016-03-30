@@ -1,0 +1,234 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+    <link type="text/css" rel="stylesheet" href="css/showBo.css" />
+    <script type="text/javascript" src="js/showBo.js"></script>
+	<style>
+		#lvm_create,#lvm_updata{ display: none;}		
+		.tab{ border: none; margin-top: 0px; }
+		.tab tr td{ border: none; padding: 5px 5px;}
+		.tab tr td:nth-child(1){ text-align: right;}
+		.tab tr td:nth-child(2){ text-align: left; width: 250px;}
+		.input_select{ background: transparent;}
+	</style>
+	<script>
+		function lvm_show(){
+            $("#lvm_create").css("display","block");
+            $("#lvm_updata").css("display","none");
+            ajax_http("vgs","get","", show_vgs);
+		}
+		
+        var state_arr = ["Unknow","Normal","Actived","Idle"];
+        var vgname = [];
+        var p = 0;
+		function add_lvm_row(lvm){
+			var lvm_row_template = '<tr><td><input type="checkbox" id="{0}"></td><td id="name{0}">{1}</td><td id="vgname{6}">{2}</td><td>{3}</td><td>{4}</td><td>{5}</td></tr>';
+			var lvm_row_html = String.format(lvm_row_template, lvm.id, lvm.name, lvm.vg_name, state_arr[lvm.state], lvm.path, human_size(lvm.size),lvm.id);
+			$("#lvms").append(lvm_row_html);
+			vgname[p] = $("#vgname"+lvm.id).html();
+			p = p+1;		
+		}
+
+		function show_lvms(data){
+			for(var i=0;i<data.lvms.length;i++){	
+                add_lvm_row(data.lvms[i]);
+       		}
+		}
+
+		function show_vgs(data){
+			for(var i=0;i<data.vgs.length;i++){
+                var size = human_size(data.vgs[i].size, true);
+				var vg_name = data.vgs[i].name;				
+				for(j=0;j<vgname.length;j++){
+					if(vgname[j]==vg_name){
+						size = "";
+						vg_name = "";
+					}
+				}
+				$("#vgname").append($("<option></option>").attr("value", vg_name).text(vg_name));
+				$("#size").append($("<option></option>").attr("value", size).text(size));								
+           	}
+		}
+
+		$(function query_lvms(){
+			var r = ajax_http("lvms","get","", show_lvms);
+			var e = ajax_http("vgs","get","", show_vgs);
+            if(!r || !e)
+            	{
+                	alert("Reqeust failure");
+            	}
+        	$(".close").click(function(){
+                $(".new").css("display","none");
+            });
+		});
+
+		function on_lvm_create(data){
+			if (data.retcode == 0) {
+				add_lvm_row(data.lvm);
+                alert_info("prompt_ok", __tr("Operation Success"));
+            }
+            else
+            {                        
+               	alert_info("prompt_err",data.message);
+            }
+            $(".new").css("display","none");
+		}
+
+		function lvm_create(){
+			var lvm_name= $("#name").val();
+			var lvm_vgname = $("#vgname").val();
+			var lvm_size= $("#size").val();
+			if(lvm_name.trim()==""){
+				alert_info("prompt_war", __tr("No LV Name"));
+				return false;
+			}
+			if(lvm_vgname==null||lvm_vgname.trim()==""){
+				alert_info("prompt_war", __tr("No LV"));
+				return false;
+			}
+			if(lvm_size==null||lvm_size.trim()==""){
+				alert_info("prompt_war", __tr("No LV Size"));
+				return false;
+			}
+			var data = {
+        		"name": lvm_name,
+			    "vgname": lvm_vgname,
+			    "size": lvm_size
+            };
+			var r = ajax_http("lvms","post",data, on_lvm_create);
+        	if(!r)
+        	{
+            	alert("Reqeust failure");
+        	}
+		}
+
+		function on_lvm_delete(data){
+            if(data.retcode == 0){
+			$("#"+data.id).parent().parent("tr").remove();
+                alert_info("prompt_ok", __tr("Operation Success"));
+            }
+            else
+			{
+				alert_info("prompt_err",data.message);
+			}
+		}
+
+		function lvm_delete(){
+			var ids = get_checked_ids();
+            	if (ids.length == 0) {
+                    alert_info("prompt_war", __tr("No LV"));
+            	}else{
+			var lang = getLanguage();
+            		Showbo.Msg.confirm(__tr("Delete LV"),function(flag){
+                    	if(flag=='yes'){
+                        	for(var i=0; i<ids.length;i++){
+                        		var data = {
+                            		"id" : ids[i]
+                                };
+                                var r = ajax_http("lvms/"+ids[i]+"/delete","post",data, on_lvm_delete);
+					       }
+                        }
+                	}, lang);
+                }
+    		}
+
+    	$(document).on("change",".operation",function(){
+            $("#newname").css("display","none");
+        });
+
+	var current_lvm_id;
+    	function lvm_updata_show(){
+		var ids = get_checked_ids();
+		if (ids.length != 1){
+			alert_info("prompt_war", __tr("No LV"));
+			return;
+		}
+		current_lvm_id = ids[0];
+		$("#lvm_updata").css("display","block");                 
+        $("#lvm_create").css("display","none");     
+	}
+
+    	function on_lvm_update(data){
+    		if (data.retcode==0) {
+                $("#name"+data.lvm.id).html(data.lvm.name);
+                $("#lvm_updata").css("display","none");
+                alert_info("prompt_ok", __tr("Operation Success"));
+            }
+            else
+            {                        
+                alert_info("prompt_err",data.message);
+            }
+    	}
+
+	function lvm_update(){
+		var newname = $("#newname").val();
+		if(newname.trim()==""){
+			alert_info("prompt_war", __tr("New LV Name"));
+			return false;
+		}
+		var data = {
+			"id" : current_lvm_id,
+			"name" : newname
+		};
+		var r = ajax_http("lvms/" + current_lvm_id, "post",data, on_lvm_update);
+		if(!r)
+		{
+			alert("Reqeust failure");
+		}
+	}
+</script>
+</head>
+<body onload="readcookie()">
+	<div class="bd">
+		<p class="headtitle" lang>Logical Volume</p>
+		<div class="banner">
+			<p id="message" class="prompt"></p>
+			<div class="list">
+				<button onclick="lvm_show()" class="add" lang>Add</button>
+				<button onclick="lvm_delete()" class="delete" lang>Delete</button>
+				<button onclick="lvm_updata_show()" class="modify" lang>Modify</button>
+			</div>
+			<hr />
+			<table id="lvms" border="0" cellspacing="0" cellpadding="0">
+				<tr class="table_title">
+					<td></td>
+					<td lang>Name</td>
+					<td lang>VG Name</td>
+					<td lang>State</td>
+					<td lang>Path</td>
+					<td lang>Capacity</td>	
+				</tr>
+			</table>			
+			<div id="lvm_create" class="new">
+				<table class="tab">
+					<tr>
+						<td lang>LV Name</td>
+						<td><input type="text" id="name" class="input_text" placeholder="" /></td>
+					</tr>
+					<tr>
+						<td lang>VG Name</td>
+						<td><select id="vgname" class="input_select"></select></td>
+					</tr>
+					<tr>
+						<td lang>VG Size</td>
+						<td><select id="size" class="input_select"></select></td>
+					</tr>
+				</table>
+                <div class="close"></div>
+				<button onclick="lvm_create()" class="submit" lang>Save</button>		
+			</div>
+			<div id="lvm_updata" class="new">
+                <div class="close"></div>
+				<p><span lang>New LV Name</span><input type="text" id="newname" class="input_text" placeholder="" /></p><br />
+				<button onclick="lvm_update()" class="submit" lang>Save</button>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

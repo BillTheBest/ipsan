@@ -19,6 +19,7 @@ event_os_network = 9
 
 
 event_upgrade = 2
+event_upd_upgrade = 10
 
 
 grgrant_prog = os.path.join(work_dir, "grgrant")

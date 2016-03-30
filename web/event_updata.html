@@ -1,0 +1,197 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/ajaxfileupload.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+    <link type="text/css" rel="stylesheet" href="css/showBo.css" />
+    <script type="text/javascript" src="js/showBo.js"></script>
+	<style>
+		.input_text{ margin-left: 0px; width: 280px; font-size: 13px;}
+		.a-upload {padding: 4px 10px; height: 20px; line-height: 20px; position: relative; cursor: pointer; color: #888; background: #fafafa; border: 1px solid #ddd; border-radius: 4px; margin-left: 10px; display: inline-block;  *display: inline; *zoom: 1; overflow: hidden;}
+		.a-upload input{ position: absolute; font-size: 100px; right: 0; top: 0; opacity: 0; filter: alpha(opacity=0); cursor: pointer;}
+		#file_0{ float: left;}
+		.a-upload:hover { color: #444; background: #eee; border-color: #ccc; text-decoration: none;}
+		.tittle{ font-weight: bold; font-size: 16px; color: black; margin: 20px 0 20px 0;}
+		hr{ height:1px; border:none; border-top:1px dashed #ccc; margin-top: 30px;}
+		.input_updata{ padding-left: 30px; padding-right: 8px; padding-top: 5px; padding-bottom: 5px; background: url(./images/updata.png) no-repeat 5px center #35AA47; background-size: 24px 24px; color:#fff; font-size: 15px; cursor: pointer; margin-top: 20px; border: none; margin-left: 0px; display: block;}
+		.input_info{ padding-left: 30px; padding-right: 8px; padding-top: 5px; padding-bottom: 5px; background: url(./images/info.png) no-repeat 5px center #4D90FE; background-size: 24px 24px; color:#fff; font-size: 15px; cursor: pointer; text-align: center; border: none;}
+		.prompt_war{ width: 300px;}
+		#tip3{ width: 300px; height: auto; padding-left: 15px; padding-right: 15px; text-align: center; font-size: 16px;
+	text-shadow: 0px 1px 0px rgba(255, 255, 255, 0.5); position: fixed; line-height: 40px; display: none;
+	margin-left: auto; margin-right: auto; left:0; right:0; border-radius: 4px;}
+	</style>
+	<script>
+        function check_pathname(){
+        	var path = document.getElementById("file").value;
+			var pos1 = path.lastIndexOf('/');
+			var pos2 = path.lastIndexOf('\\');
+			var pos  = Math.max(pos1, pos2);   //正则表达式，\w表示可以包括大小写字母、数字、下划线；                   .表示除了空格和回车的其他所有字符；*表示可以出现无限次；
+			var abc = /^goldenrod\.IPSAN[^\s]{0,}\.tar\.gz$/;
+			if( pos<0 ){
+				file = path;
+			}
+			else{
+				file = path.substring(pos+1);
+			}
+			if (file == "") {
+				alert_info("prompt_war", __tr("No File"));
+				return false;
+			}
+			if(!abc.test(file)){
+				alert_info("prompt_war", __tr("Invalid File")); //
+				return false;				
+			}			
+			$('#tip3').css("display","block");
+			return true;	
+		}
+
+		var aa;
+		var i=5;
+		function tip(){
+			$('#tip').text(" " + i-- + " ");
+			if (i == -1){
+				$('#tip').text("1");
+				clearInterval(aa);
+				setCookie("username","",-1);
+				window.parent.location.href="index.html";				
+			}
+		}
+		
+		
+		
+		function output(data){	
+			var filename = data.filename;
+			if(data.retcode==0){
+				window.location.href=filename;
+			}
+			else
+			{
+				alert_info("prompt_err","request failure");
+			}			
+		}
+
+		function diagnostic_log(){
+			var r = ajax_http("diagnosis","get","",output);
+		}
+
+		/*关机重启*/
+		function poweroff(){
+			var lang = getLanguage();
+			Showbo.Msg.confirm(__tr("Confirm Poweroff"),function(flag){
+                if(flag=='yes'){
+                    var r = ajax_http("poweroff","post","");
+            		if(!r)
+            		{
+                		alert("Reqeust failure");
+            		} 
+                }
+                else if(flag=='no')
+                {
+                    return false;
+                }
+            }, lang);  		
+    	}
+
+    	function reboot(){
+		var lang = getLanguage();
+    		Showbo.Msg.confirm(__tr("Confirm Reboot"),function(flag){
+                if(flag=='yes'){
+                   var r = ajax_http("reboot","post","");
+            		if(!r)
+            		{
+                		alert("Reqeust failure");
+            		}  
+                }
+                else if(flag=='no')
+                {
+                    return false;
+                }
+            }, lang);            
+    	}
+	</script>
+</head>
+<body onload="readcookie()">
+	<div class="bd">
+		<p class="headtitle" lang>Maintenance</p>
+		<div class="banner">
+			<p id="message" class="prompt"></p>
+			<p id="tip3" class="prompt_err"><span lang>Upgrading</span><label id="tip"> 5 </label><span lang>Will Reboot</span></p>			
+			<p class="tittle" lang>Soft Upgrade</p>
+			<form id="uploadform" accept-charset="utf-8" enctype="multipart/form-data">
+				<input type="text" id="file_0" class="input_text" placeholder="goldenrod.IPSAN-version.tar.gz" />
+				<a href="javascript:;" class="a-upload"><span lang>Browsing</span>
+				<input id="file" name="file" value="" for="aaa" type="file" class="input_read" onchange="document.getElementById('file_0').value=this.value"></a>
+				<p><input value="Upload" type="submit" class="input_updata" lang></p>
+			</form>
+		<hr />
+		<div id="diagnostic_log">			
+			<p class="tittle" lang>Diagnosis</p>
+			<button onclick="diagnostic_log()" class="input_info" lang>Diagnosis</button>
+		</div>
+		<hr />
+		<div id="close">
+			<p class="tittle" lang></p>			
+			<div id="poweroff" onclick="poweroff()"><img src="images/power_off_btn.png" /><span lang>Poweroff</span></div>
+			<div id="reboot" onclick="reboot()"><img src="images/reset_btn.png" /><span lang>Reboot</span></div>
+		</div>	
+		</div>	
+	</div>
+</body>
+<script>
+	$('#uploadform')
+		.submit(function(e){
+			var value = check_pathname();
+			if(!value){
+				return false;
+			}else{			
+            $.ajaxFileUpload
+            (
+                {
+                    url: "http://"+api_server+":8000/api/upload",
+                    secureuri: false, //是否需要安全协议，一般设置为false
+                    fileElementId: 'file', //文件上传域的ID
+                    type: "post",
+                    dataType: 'json', //返回值类型 一般设置为json
+                    success: function (data, status)  //服务器成功响应处理函数
+                    {
+                        i=4;
+						aa = setInterval(tip, 1000); 
+               			tip();
+                    },
+                    error: function (data, status)//服务器响应失败处理函数
+                    {
+                        alert_info("prompt_err", __tr("Upgrade failure"));
+                    }
+                }
+            )
+            return false;
+        }
+		});
+	// $('#uploadform')
+	// 	.submit(function(e){
+	// 		var value = check_pathname();
+	// 		if(!value){
+	// 			return false;
+	// 		}else{
+	// 		var data = new FormData(this);
+	// 		$.ajax({
+	// 			url : "http://"+api_server+":8000/api/upload",
+	// 			type : "post",
+	// 			data : data,
+	// 			processData : false,
+	// 			contentType : false,
+	// 			success : function(data) {
+	// 				i=4;
+	// 				aa = setInterval(tip, 1000); 
+ //               		tip();
+ //            	}
+	// 		});
+	// 		e.preventDefault();
+	// 		}
+	// 	});
+</script>
+</html>

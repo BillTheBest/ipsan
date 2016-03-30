@@ -7,33 +7,33 @@ import logging
 import subprocess
 from coroweb import get, post
 from config import grgrant_prog, grdisk_prog, configs
+from config_defaults import g_panel_map
 from models import Disk
 
 _exclude_slot = ['61', '62']
 
 _disk_normal_state = 0
-_disk_missing_state = 1
+_disk_abnormal_state = 1
 
+disk_slot_map = []
 
-_panel_map = {
-    2 : {3: 1, 2: 2, 4: 3, 5: 4, 9: 5, 6: 6},
-    3 : {3: 1, 2: 2, 4: 3, 5: 4, 9: 5, 6: 6, 8: 7, 7: 8},
-    4 : {3: 1, 2: 2, 4: 3, 5: 4, 9: 5, 6: 6, 8: 7, 7: 8},
-    5 : {3: 1, 2: 2, 4: 3, 5: 4, 9: 5, 6: 6, 8: 7, 7: 8, 10: 9},
-    6 : {3: 1, 2: 2, 4: 3, 5: 4, 9: 5, 6: 6, 8: 7, 7: 8},
-    7 : {3: 1, 2: 2, 4: 3, 5: 4, 9: 5, 6: 6, 8: 7, 7: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13, 14: 14, 15: 15, 16: 16},
-    8 : {3: 1, 2: 2, 4: 3, 5: 4, 9: 5, 6: 6, 8: 7, 7: 8, 9: 9, 10: 10, 11: 11, 12: 12, 13: 13, 14: 14, 15: 15, 16: 16}
-}
+def get_avail_slot(count):
+    for i in range(1, count):
+        if i not in disk_slot_map:
+            disk_slot_map.append(i)
+            return i
+    return None
 
 
 def get_slot(slot):
     slot = int(slot)
-    if configs.sysinfo.panel in _panel_map:
-        panel_map = _panel_map[configs.sysinfo.panel]
+    if configs.sysinfo.panel in g_panel_map:
+        panel_map = g_panel_map[configs.sysinfo.panel]
         if slot in panel_map:
+            disk_slot_map.append(panel_map[slot])
             return panel_map[slot]
         else:
-            return slot % configs.sysinfo.panel
+            return get_avail_slot(len(panel_map)+1)
 
 
 @asyncio.coroutine
@@ -77,27 +77,38 @@ def api_disks():
 
         capacity: disk capacity(Bytes)
 
-        state: 0-normal; 1-missing
+        state: 0-normal; 1-abnormal
     '''
     disks_cur = yield from disk_list()
     disk_ids = [disk.id for disk in disks_cur]
     for disk in disks_cur:
         r =  yield from Disk.find(disk.id)
         if r is None:
+            if disk.capacity == 0:
+                disk.state = _disk_abnormal_state
             yield from disk.save()
     disks_in_db = yield from Disk.findall()
-    for disk in disks_in_db:
-        d = [disk_cur for disk_cur in disks_cur if disk_cur.id == disk.id]
-        if (len(d) != 0):
-            disk_cur = d[0]
-            if disk.state == _disk_missing_state:
-                disk.state = _disk_normal_state
-                yield from disk.update()
-            if disk.device != disk_cur.device:
-                disk.device = disk_cur.device
-                yield from disk.update()
-        else:
-            disk.state = _disk_missing_state
-            yield from disk.update()
+    if disks_in_db:
+        for disk in disks_in_db:
+            d = [disk_cur for disk_cur in disks_cur if disk_cur.id == disk.id]
+            if (len(d) != 0):
+                disk_cur = d[0]
+                if disk.state == _disk_abnormal_state:
+                    disk.state = _disk_normal_state
+                    yield from disk.update()
+                    if disk.device != disk_cur.device:
+                        disk.device = disk_cur.device
+                        yield from disk.update()
+                    else:
+                        disk.state = _disk_abnormal_state
+                        yield from disk.update()
+                else:
+                    if disk.capacity == 0:
+                        disk.state = _disk_abnormal_state
+                        yield from disk.update()
+            else:
+                # disk.state = _disk_abnormal_state;
+                yield from disk.remove();
+                # yield from disk.update()
 
     return dict(retcode=0, disks=disks_in_db)

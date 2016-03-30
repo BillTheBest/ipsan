@@ -17,14 +17,7 @@ function show_info()
 	echo -e "\033[32m$1.\033[0m"
 }
 
-GRANT=/opt/goldenrod/grgrant
-
-# create database
-IPSANDB=ipsan.db
-if [ ! -f $IPSANDB ]; then
-	show_info "Install ipsan database..."
-	sqlite3 ipsan.db < schema.sql
-fi
+GRANT=./grgrant
 
 # check supervisord
 SUPERVISORD=/usr/bin/supervisord
@@ -87,7 +80,7 @@ show_success "Supervisor started"
 
 # start ipsan api service
 show_info "Starting IPSan API service..."
-$GRANT $SUPERVISORCTL start ipsanapi
+$GRANT $SUPERVISORCTL restart ipsanapi
 RET=`echo $?`
 if [ $RET != 0 ]; then 
 	show_fail "Start IPSan API service failure"
@@ -96,17 +89,9 @@ show_success "IPSan API service started"
 
 # start ipsan daemon
 show_info "Starting IPSan daemon..."
-$GRANT $SUPERVISORCTL start ipsand
+$GRANT $SUPERVISORCTL restart ipsand
 RET=`echo $?`
 if [ $RET != 0 ]; then 
 	show_fail "Start IPSan daemon failure"
 fi
 show_success "IPSan daemon started"
-
-# set api server
-/usr/bin/python3 admin/network.py --init > /dev/null
-show_success "Setting api server"
-
-echo "----------------------------------------------------"
-show_info "Install completed, Enjoin yourself"
-exit 0

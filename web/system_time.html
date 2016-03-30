@@ -1,0 +1,70 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head>
+	<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+	<title></title>
+	<link rel="stylesheet" href="css/style.css" type="text/css" />
+	<script type="text/javascript" src="js/jquery-1.11.3.min.js"></script>
+	<script type="text/javascript" src="js/jquery.SuperSlide.2.1.1.js"></script>
+	<script type="text/javascript" src="js/js.js"></script>
+	<style>		
+		.banner{ text-align: center;}
+		#datetimepicker{margin-top: 50px; background:url(images/datetime.png) right no-repeat white; cursor:pointer;}
+	</style>
+	<script>
+	</script>
+</head>
+<body onload="readcookie(),nowtime()">
+	<div class="bd">
+		<p class="headtitle" lang>DateTime</p>
+		<div class="banner">
+			<div id="message" class="prompt"></div>
+			<p><span lang>DateTime</span><input type="text" value="" id="datetimepicker" class="input_text"/></p>
+			<p><input type="button" onclick="postdate()" value="Save" class="submit" lang /></p>
+		</div>
+	</div>
+</body>
+<script src="js/jquery.datetimepicker.full.js"></script>
+<link rel="stylesheet" type="text/css" href="css/jquery.datetimepicker.css"/>
+<script>
+	function output(data){
+		var str = data.datetime;
+		var datetime = str.substring(0,str.length - 3);		
+		$('#datetimepicker').datetimepicker({value:datetime,step:10});
+		//var a = window.parent.document.getElementById('time'); 
+
+	}	
+	function nowtime(){
+		var r = ajax_http("datetime","get","",output);
+		if(!r){
+			alert("Reqeust failure");
+		}
+	}
+	var lang = getLanguage(); 
+	$.datetimepicker.setLocale(lang);
+	$('#datetimepicker').datetimepicker();
+	function output_updata(data){
+		if (data.retcode == "0"){	
+			alert_info("prompt_ok", __tr("DateTime Setting Success"));
+			var datetime = data.datetime.substring(0,data.datetime.length - 3);		
+			$('#time', window.parent.document).html(datetime);
+        }
+        else
+        {   
+        	alert_info("prompt_err",data.message);
+        }
+	}
+	function postdate()
+	{
+		var time = $('#datetimepicker').datetimepicker({ dateFormat: 'dd,MM,yyyy' }).val()+":00";
+		var data = {
+			"now" : time
+		}
+		var r = ajax_http("datetime","post",data,output_updata);
+		if(!r)
+		{
+			alert("Reqeust failure");
+		}        
+	}
+</script>
+</html>
